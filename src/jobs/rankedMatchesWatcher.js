@@ -3,6 +3,39 @@ const logger = require('../lib/logger');
 const { createIntervalJob } = require('../lib/jobs');
 const { loadPostedSet, savePostedSet } = require('../lib/postCache');
 
+// Custom emoji configuration via environment variables
+// Examples in .env: WIN_EMOJI=<:ok:1408286736181891072>
+const WIN = process.env.WIN_EMOJI || '🏆';
+const LOSE = process.env.LOSE_EMOJI || '❌';
+const FF = process.env.FF_EMOJI || '🏳️';
+const SEED = process.env.SEED_EMOJI || '🌱';
+const CLOCK = process.env.CLOCK_EMOJI || '⏱️';
+const TROPHY = process.env.TROPHY_EMOJI || '🏆';
+const GLOBE = process.env.GLOBE_EMOJI || '🌐';
+const LOGO = process.env.LOGO_EMOJI || '🎮';
+const BASTION = process.env.BASTION_EMOJI || ' ';
+const VILLAGE_EMOJI = process.env.VILLAGE_EMOJI || '';
+const SHIPWRECK_EMOJI = process.env.SHIP_EMOJI || '';
+const DESERT_TEMPLE_EMOJI = process.env.DESERT_TEMPLE_EMOJI || '';
+const RUINED_PORTAL_EMOJI = process.env.RUINED_PORTAL_EMOJI || '';
+const BURIED_TREASURE_EMOJI = process.env.BURIED_TREASURE_EMOJI || '';
+const BRIDGE_EMOJI = process.env.BRIDGE_EMOJI || '';
+const HOUSING_EMOJI = process.env.HOUSING_EMOJI || '';
+const STABLES_EMOJI = process.env.STABLES_EMOJI || '';
+const TREASURE_EMOJI = process.env.TREASURE_EMOJI || '';
+// Seed type translations
+const SEED_TYPE_TRANSLATIONS = {
+  'VILLAGE': 'Village',
+  'SHIPWRECK': 'Shipwreck',
+  'DESERT_TEMPLE': 'Desert Temple',
+  'RUINED_PORTAL': 'Ruined Portal',
+  'BURIED_TREASURE': 'Buried Treasure',
+  'BRIDGE': 'Bridge',
+  'HOUSING': 'Housing',
+  'STABLES': 'Stables',
+  'TREASURE': 'Treasure',
+};
+
 // Posted IDs persisted to disk to avoid reposts across restarts
 const postedSet = loadPostedSet();
 // Guard for concurrent runs to avoid duplicate sends within the same process window
@@ -33,7 +66,7 @@ function formatDuration(msOrSec) {
 }
 
 function countryFlag(country) {
-  if (!country) return '🌐';
+  if (!country) return `${GLOBE}`;
   const code = String(country).toUpperCase();
   if (code.length !== 2) return code;
   // Regional indicator symbols A-Z start at 0x1F1E6
@@ -43,6 +76,29 @@ function countryFlag(country) {
   return String.fromCodePoint(first) + String.fromCodePoint(second);
 }
 
+function translateSeedType(seedType) {
+  if (!seedType) return seedType;
+  const upperType = String(seedType).toUpperCase();
+  return SEED_TYPE_TRANSLATIONS[upperType] || seedType;
+}
+
+function getOverworldEmoji(seedType) {
+  if (!seedType || seedType === '—') return '';
+  const upperType = String(seedType).toUpperCase();
+  const emojiMap = {
+    'VILLAGE': VILLAGE_EMOJI,
+    'SHIPWRECK': SHIPWRECK_EMOJI,
+    'DESERT_TEMPLE': DESERT_TEMPLE_EMOJI,
+    'RUINED_PORTAL': RUINED_PORTAL_EMOJI,
+    'BURIED_TREASURE': BURIED_TREASURE_EMOJI,
+    'BRIDGE': BRIDGE_EMOJI,
+    'HOUSING': HOUSING_EMOJI,
+    'STABLES': STABLES_EMOJI,
+    'TREASURE': TREASURE_EMOJI
+  };
+  return emojiMap[upperType] || '';
+}
+
 function eloLineFor(match, uuid, fallbackRate) {
   // Try to compute "before → after (±delta)"
   const changes = Array.isArray(match?.changes) ? match.changes : [];
@@ -50,9 +106,11 @@ function eloLineFor(match, uuid, fallbackRate) {
   const change = rec?.change;
   const after = rec?.eloRate ?? fallbackRate;
   if (typeof change === 'number' && Number.isFinite(change) && typeof after === 'number' && Number.isFinite(after)) {
-    const before = after - change;
+    // Fixed: if eloRate is the ELO before the match, then after = eloRate + change
+    const before = after;
+    const actualAfter = after + change;
     const sign = change > 0 ? `+${change}` : `${change}`;
-    return ` \`$${before} → ${after} (${sign})\``.replace('$','');
+    return ` \`${before} → ${actualAfter} (${sign})\``;
   }
   if (typeof after === 'number' && Number.isFinite(after)) {
     return ` \`${after}\``;
@@ -70,10 +128,11 @@ function buildMatchEmbed(match) {
 
   const winner = hasWinner ? (players.find(p => p.uuid === winnerUuid) || null) : null;
   const loser = hasWinner ? (players.find(p => p.uuid !== winnerUuid) || null) : null;
+  // Ensure display order: winner first, then loser (when there is a winner)
+  const p1 = (hasWinner && winner && loser) ? winner : players[0];
+  const p2 = (hasWinner && winner && loser) ? loser : players[1];
 
   // Brazil-aware color logic
-  const p1 = players[0];
-  const p2 = players[1];
   const p1IsBR = isBrazil(p1?.country);
   const p2IsBR = isBrazil(p2?.country);
   const anyBR = p1IsBR || p2IsBR;
@@ -91,14 +150,22 @@ function buildMatchEmbed(match) {
     // default fallback based on type
     color = isForfeit ? 0xFFA500 : (isDraw ? 0xF1C40F : 0x2ECC71);
   }
-  const title = isDraw ? '⚖️ MCSR Ranked (Empate)' : (isForfeit ? '🏳️ MCSR Ranked (Forfeit)' : '🏆 MCSR Ranked');
+  const title = isDraw ? '⚖️ MCSR Ranked (Empate)' : (isForfeit ? '🏳️ MCSR Ranked (forfeited)' : `${TROPHY} MCSR Ranked`);
 
   // p1/p2 already defined above
 
   const p1IsWinner = Boolean(winner && winner.uuid === p1?.uuid);
   const p2IsWinner = Boolean(winner && winner.uuid === p2?.uuid);
-  const p1Suffix = isDraw ? '' : (p1IsWinner ? (isForfeit ? ' — 🏆 (forfeit)' : ' — 🏆') : (isForfeit && p1 && loser && p1.uuid === loser.uuid ? ' — 🏳️ Forfeit' : ''));
-  const p2Suffix = isDraw ? '' : (p2IsWinner ? (isForfeit ? ' — 🏆 (forfeit)' : ' — 🏆') : (isForfeit && p2 && loser && p2.uuid === loser.uuid ? ' — 🏳️ Forfeit' : ''));
+  const p1Suffix = isDraw ? '' : (
+    p1IsWinner
+      ? ` — ${WIN}`
+      : (isForfeit && p1 && loser && p1.uuid === loser.uuid ? ` — ${LOSE}${FF}` : ` — ${LOSE}`)
+  );
+  const p2Suffix = isDraw ? '' : (
+    p2IsWinner
+      ? ` — ${WIN}`
+      : (isForfeit && p2 && loser && p2.uuid === loser.uuid ? ` — ${LOSE}${FF}` : ` — ${LOSE}`)
+  );
   const p1Name = p1 ? (p1IsWinner ? `**${p1.nickname || '???'}**` : `${p1.nickname || '???'}`) : '—';
   const p2Name = p2 ? (p2IsWinner ? `**${p2.nickname || '???'}**` : `${p2.nickname || '???'}`) : '—';
   const p1Elo = p1 ? eloLineFor(match, p1.uuid, p1.eloRate) : '';
@@ -108,17 +175,23 @@ function buildMatchEmbed(match) {
 
   const desc = `• ${p1Line}\n• ${p2Line}`;
 
-  const seedOver = seed.overworld || '—';
-  const seedBastion = seed.nether || seed.bastionType || '—';
+  const rawOverworldType = seed.overworld || '—';
+  const seedOver = rawOverworldType === '—' ? rawOverworldType : translateSeedType(rawOverworldType);
+  const overworldEmoji = getOverworldEmoji(rawOverworldType);
+  const rawBastionType = seed.nether || seed.bastionType || '—';
+  const seedBastion = rawBastionType === '—' ? rawBastionType : translateSeedType(rawBastionType);
+  const footerOpts = { text: `Match ID: ${match.id} • MCSR BR` };
+  const footerIconURL = process.env.FOOTER_ICON_URL || process.env.MCSR_FOOTER_ICON_URL;
+  if (footerIconURL) footerOpts.iconURL = footerIconURL;
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(title)
     .setDescription(desc)
     .addFields(
-      { name: '⏱️ Tempo', value: formatDuration(match?.result?.time), inline: true },
-      { name: '🌱 Seed', value: `Overworld: \`${seedOver}\`\nBastion: \`${seedBastion}\``, inline: true },
+      { name: `${CLOCK} Tempo`, value: formatDuration(match?.result?.time), inline: true },
+      { name: `${SEED} Seed`, value: `${overworldEmoji} Overworld: \`${seedOver}\`\n${BASTION} Bastion: \`${seedBastion}\``, inline: true },
     )
-    .setFooter({ text: `Match ID: ${match.id}` });
+    .setFooter(footerOpts);
 
   // Timestamp
   if (match.date) {
@@ -242,7 +315,7 @@ async function runRankedWatcher(client) {
 
 module.exports = {
   async register({ register }) {
-    const intervalMs = Number(process.env.RANKED_POLL_MS) || 60000;
+    const intervalMs = Number(process.env.RANKED_POLL_MS) || 15000;
     register(
       createIntervalJob({
         name: 'rankedMatchesWatcher',
