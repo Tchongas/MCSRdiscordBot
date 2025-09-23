@@ -1,0 +1,44 @@
+{
+  "updatedAt": 1758669253791,
+  "items": [
+    {
+      "id": "1",
+      "title": "Loss completa uma seed",
+      "options": [
+        "Sim",
+        "Nao"
+      ],
+      "closesAt": "2025-10-30T23:59:59.000Z"
+    },
+    {
+      "id": "2",
+      "title": "Sub 10 na Copa br Serie B",
+      "options": [
+        "Sim",
+        "Nao"
+      ],
+      "closesAt": "2025-10-30T23:59:59.000Z"
+    },
+    {
+      "id": "3",
+      "title": "Seed > 60mins na copa BR Serie B",
+      "options": [
+        "Sim",
+        "Nao"
+      ],
+      "closesAt": "2025-10-30T23:59:59.000Z"
+    },
+    {
+      "id": "4",
+      "title": "Melhor tempo Serie B",
+      "options": [
+        "Sub10",
+        "Sub11",
+        "Sub12",
+        "Sub 13",
+        "Sub14"
+      ],
+      "closesAt": "2025-10-30T23:59:59.000Z"
+    }
+  ]
+}

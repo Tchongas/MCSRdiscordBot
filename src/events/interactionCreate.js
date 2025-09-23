@@ -1,9 +1,63 @@
-const { Events } = require('discord.js');
+const { Events, MessageFlags } = require('discord.js');
+const economy = require('../lib/economy');
+const daily = require('../lib/daily');
 const logger = require('../lib/logger');
+const { QUESTIONS } = require('../lib/dailyQuestions');
 
 module.exports = {
   name: Events.InteractionCreate,
   async execute(client, interaction) {
+    // Buttons for /daily
+    if (interaction.isButton()) {
+      const id = interaction.customId || '';
+      // Format (legacy): daily:<userId>:<isCorrect:0|1>
+      // Format (new):    daily:<userId>:<choiceIndex>:<isCorrect:0|1>:<qIndex>
+      if (id.startsWith('daily:')) {
+        const parts = id.split(':');
+        const targetUserId = parts[1];
+        // Support both legacy 3-part and new 4-part format
+        const isCorrect = (parts[3] ?? parts[2]) === '1';
+        const qIndexRaw = parts[4];
+        const qIndex = Number.isFinite(Number(qIndexRaw)) ? Number(qIndexRaw) : undefined;
+        if (interaction.user.id !== targetUserId) {
+          return interaction.reply({ content: 'Esse botão não é para você.', flags: MessageFlags.Ephemeral });
+        }
+        // Enforce 24h cooldown on first click
+        if (!daily.canClaim(interaction.user.id)) {
+          return interaction.reply({ content: 'Você já usou o daily nas últimas 24h.', flags: MessageFlags.Ephemeral });
+        }
+        // Consume daily regardless of correctness (single attempt per 24h)
+        daily.setClaimNow(interaction.user.id);
+        if (isCorrect) {
+          const reward = Number(process.env.DAILY_REWARD || 50);
+          economy.addBalance(interaction.user.id, reward);
+          // Announce publicly in the channel without pinging the user or revealing the answer
+          try {
+            const displayName = interaction.member?.displayName || interaction.user.username;
+            const questionText = qIndex !== undefined ? QUESTIONS[qIndex].q : 'a pergunta diária';
+            const msg = `✅ **${displayName}** acertou a pergunta "${questionText}" +${reward} 🪙\n-# Use **/daily** para responder também`;
+            await interaction.channel?.send({ content: msg });
+          } catch {}
+          return interaction.update({ content: `✅ Resposta correta! Você ganhou ${reward} moedas.`, components: [] });
+        } else {
+          return interaction.update({ content: '❌ Resposta incorreta! Tente novamente amanhã.', components: [] });
+        }
+      }
+      return; // other buttons ignored
+    }
+
+    // Autocomplete for slash commands
+    if (interaction.isAutocomplete()) {
+      const command = client.commands.get(interaction.commandName);
+      if (!command?.autocomplete) return;
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        logger.error('Error running autocomplete:', error);
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
     if (!command) {

@@ -46,9 +46,17 @@ module.exports = {
     const season = interaction.options.getNumber('season') || 'all';
     let embed;
 
+    // Defer early to avoid interaction timeout while fetching remote data
+    await interaction.deferReply();
+
     let allTimeScores = season == 'all'
 
-    let data = allTimeScores ? await getScores(player_one, player_two) : await getScoresPerSeason(player_one, player_two, season)
+    let data;
+    try {
+      data = allTimeScores ? await getScores(player_one, player_two) : await getScoresPerSeason(player_one, player_two, season);
+    } catch (err) {
+      return interaction.editReply({ content: 'Falha ao obter os dados de comparação. Tente novamente mais tarde.' });
+    }
 
     const player_one_id = data.references[player_one];
     const player_two_id = data.references[player_two];
@@ -93,6 +101,6 @@ module.exports = {
       .setFooter({ text: "• MCSR BR", iconURL: "https://media.discordapp.net/attachments/1003054589257465937/1414715516039205035/Cristal_Brasil.png?ex=68c093ff&is=68bf427f&hm=7c383f3f9ce5ac70aca98ff09bb9eacd613f259af97fdefe1baac2456d424f92&=&format=webp&quality=lossless&width=605&height=605" })
       .setTimestamp();
 
-    await await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

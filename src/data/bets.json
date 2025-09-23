@@ -1,0 +1,218 @@
+[
+  {
+    "id": "3:904123221685702657:1758560817967",
+    "userId": "904123221685702657",
+    "eventId": "3",
+    "option": "Sim",
+    "amount": 100,
+    "createdAt": 1758560817967,
+    "settled": false
+  },
+  {
+    "id": "1:226485822168367104:1758561621760",
+    "userId": "226485822168367104",
+    "eventId": "1",
+    "option": "Nao",
+    "amount": 200,
+    "createdAt": 1758561621760,
+    "settled": false
+  },
+  {
+    "id": "3:134404613167251456:1758561699662",
+    "userId": "134404613167251456",
+    "eventId": "3",
+    "option": "Sim",
+    "amount": 100,
+    "createdAt": 1758561699662,
+    "settled": false
+  },
+  {
+    "id": "2:904123221685702657:1758561848002",
+    "userId": "904123221685702657",
+    "eventId": "2",
+    "option": "Nao",
+    "amount": 200,
+    "createdAt": 1758561848001,
+    "settled": false
+  },
+  {
+    "id": "2:446364533066432512:1758562219762",
+    "userId": "446364533066432512",
+    "eventId": "2",
+    "option": "Sim",
+    "amount": 200,
+    "createdAt": 1758562219762,
+    "settled": false
+  },
+  {
+    "id": "3:446364533066432512:1758562240603",
+    "userId": "446364533066432512",
+    "eventId": "3",
+    "option": "Sim",
+    "amount": 500,
+    "createdAt": 1758562240603,
+    "settled": false
+  },
+  {
+    "id": "2:134404613167251456:1758563821186",
+    "userId": "134404613167251456",
+    "eventId": "2",
+    "option": "Nao",
+    "amount": 150,
+    "createdAt": 1758563821185,
+    "settled": false
+  },
+  {
+    "id": "1:904123221685702657:1758564035618",
+    "userId": "904123221685702657",
+    "eventId": "1",
+    "option": "Sim",
+    "amount": 100,
+    "createdAt": 1758564035618,
+    "settled": false
+  },
+  {
+    "id": "1:134404613167251456:1758564248682",
+    "userId": "134404613167251456",
+    "eventId": "1",
+    "option": "Sim",
+    "amount": 50,
+    "createdAt": 1758564248681,
+    "settled": false
+  },
+  {
+    "id": "4:904123221685702657:1758564718805",
+    "userId": "904123221685702657",
+    "eventId": "4",
+    "option": "Sub12",
+    "amount": 100,
+    "createdAt": 1758564718805,
+    "settled": false
+  },
+  {
+    "id": "4:134404613167251456:1758564831019",
+    "userId": "134404613167251456",
+    "eventId": "4",
+    "option": "Sub14",
+    "amount": 100,
+    "createdAt": 1758564831019,
+    "settled": false
+  },
+  {
+    "id": "2:1237109560939118692:1758566323046",
+    "userId": "1237109560939118692",
+    "eventId": "2",
+    "option": "Sim",
+    "amount": 1000,
+    "createdAt": 1758566323045,
+    "settled": false
+  },
+  {
+    "id": "4:410145237344976897:1758566773021",
+    "userId": "410145237344976897",
+    "eventId": "4",
+    "option": "Sub12",
+    "amount": 500,
+    "createdAt": 1758566773021,
+    "settled": false
+  },
+  {
+    "id": "2:420322285283704833:1758568143138",
+    "userId": "420322285283704833",
+    "eventId": "2",
+    "option": "Sim",
+    "amount": 150,
+    "createdAt": 1758568143138,
+    "settled": false
+  },
+  {
+    "id": "4:420322285283704833:1758568162836",
+    "userId": "420322285283704833",
+    "eventId": "4",
+    "option": "Sub10",
+    "amount": 150,
+    "createdAt": 1758568162836,
+    "settled": false
+  },
+  {
+    "id": "1:420322285283704833:1758568184256",
+    "userId": "420322285283704833",
+    "eventId": "1",
+    "option": "Nao",
+    "amount": 300,
+    "createdAt": 1758568184255,
+    "settled": false
+  },
+  {
+    "id": "2:429854204774055946:1758568540576",
+    "userId": "429854204774055946",
+    "eventId": "2",
+    "option": "Nao",
+    "amount": 1000,
+    "createdAt": 1758568540576,
+    "settled": false
+  },
+  {
+    "id": "3:800393990422921217:1758582098459",
+    "userId": "800393990422921217",
+    "eventId": "3",
+    "option": "Sim",
+    "amount": 700,
+    "createdAt": 1758582098459,
+    "settled": false
+  },
+  {
+    "id": "4:643118894176927793:1758635526893",
+    "userId": "643118894176927793",
+    "eventId": "4",
+    "option": "Sub12",
+    "amount": 10,
+    "createdAt": 1758635526893,
+    "settled": false
+  },
+  {
+    "id": "3:643118894176927793:1758635551759",
+    "userId": "643118894176927793",
+    "eventId": "3",
+    "option": "Nao",
+    "amount": 10,
+    "createdAt": 1758635551759,
+    "settled": false
+  },
+  {
+    "id": "1:643118894176927793:1758635645030",
+    "userId": "643118894176927793",
+    "eventId": "1",
+    "option": "Sim",
+    "amount": 500,
+    "createdAt": 1758635645030,
+    "settled": false
+  },
+  {
+    "id": "4:755487663762440384:1758636923133",
+    "userId": "755487663762440384",
+    "eventId": "4",
+    "option": "Sub12",
+    "amount": 100,
+    "createdAt": 1758636923133,
+    "settled": false
+  },
+  {
+    "id": "1:755487663762440384:1758636949432",
+    "userId": "755487663762440384",
+    "eventId": "1",
+    "option": "Nao",
+    "amount": 50,
+    "createdAt": 1758636949431,
+    "settled": false
+  },
+  {
+    "id": "3:677266020754522145:1758659349436",
+    "userId": "677266020754522145",
+    "eventId": "3",
+    "option": "Sim",
+    "amount": 500,
+    "createdAt": 1758659349433,
+    "settled": false
+  }
+]
