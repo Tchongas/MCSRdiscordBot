@@ -40,6 +40,13 @@ module.exports = {
           } catch {}
           return interaction.update({ content: `✅ Resposta correta! Você ganhou ${reward} moedas.`, components: [] });
         } else {
+          try {
+            const displayName = interaction.member?.displayName || interaction.user.username;
+            const questionText = qIndex !== undefined ? QUESTIONS[qIndex].q : 'a pergunta diária';
+            const msg = `❌**${displayName}** ERROU a pergunta "${questionText}" 🪙\n-# Use **/daily** para responder também`;
+            await interaction.channel?.send({ content: msg });
+          } catch {}
+
           return interaction.update({ content: '❌ Resposta incorreta! Tente novamente amanhã.', components: [] });
         }
       }

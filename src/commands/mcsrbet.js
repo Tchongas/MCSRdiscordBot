@@ -83,7 +83,7 @@ module.exports = {
             return `${opt} — ${v.toLocaleString('pt-BR')} ${EMOJI.coin}`;
           }).join(' | ');
           const pool = totals.totalAll || 0;
-          const value = `**${e.title}**\n${EMOJI.ticket} Opções: ${optionLines}${fecha ? `\n${EMOJI.calendar} Fecha: ${fecha}` : ''}\nTotal apostado: **${pool.toLocaleString('pt-BR')}** ${EMOJI.coin}`;
+          const value = `**${e.title}**\n${EMOJI.ticket} **Opções:** ${optionLines}${fecha ? `\n${EMOJI.calendar} **Fecha:** ${fecha}` : ''}\nTotal apostado: **${pool.toLocaleString('pt-BR')}** ${EMOJI.coin}`;
           embed.addFields({ name: `#${idx + 1} • ID: ${e.id}`, value, inline: false });
         });
         return interaction.reply({ embeds: [embed], ephemeral: false });

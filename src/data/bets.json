@@ -214,5 +214,16 @@
     "amount": 500,
     "createdAt": 1758659349433,
     "settled": false
+  },
+  {
+    "id": "5:904123221685702657:1758727092651",
+    "userId": "904123221685702657",
+    "eventId": "5",
+    "option": "1",
+    "amount": 500,
+    "createdAt": 1758727092651,
+    "settled": true,
+    "payout": 500,
+    "settledAt": 1758727201616
   }
 ]

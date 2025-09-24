@@ -17,7 +17,6 @@ function formatTimeLeft(ms) {
   const totalSec = Math.ceil(ms / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
   if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
@@ -39,8 +38,8 @@ module.exports = {
     // Pick a random question and track its index
     const qIndex = Math.floor(Math.random() * QUESTIONS.length);
     const q = QUESTIONS[qIndex];
-    // Shuffle options and track which one is correct
-    const opts = shuffle(q.options.map((text, idx) => ({ text, correct: idx === q.correctIndex })));
+    // Keep options in the original order and track which one is correct
+    const opts = q.options.map((text, idx) => ({ text, correct: idx === q.correctIndex }));
 
     const embed = new EmbedBuilder()
       .setColor(0x00b894)
@@ -55,7 +54,7 @@ module.exports = {
           // Format: daily:<userId>:<choiceIndex>:<isCorrect:0|1>:<qIndex>
           .setCustomId(`daily:${userId}:${i}:${o.correct ? '1' : '0'}:${qIndex}`)
           .setLabel(o.text)
-          .setStyle(ButtonStyle.Primary) // uniform style; do not reveal correct answer
+          .setStyle(ButtonStyle.Primary)
       )
     );
 
