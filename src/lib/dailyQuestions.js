@@ -11,7 +11,7 @@ const QUESTIONS = [
   { q: 'Quem foi o primeiro sub 2 em SSG do brasil?', options: ['Shy', 'Thig', 'Xheb', 'Bepeze'], correctIndex: 2 },
   { q: 'Quantos Strongholds existem em um mundo na 1.16?', options: ['64', '3', '128', '256'], correctIndex: 2 },
   { q: 'Qual bastion tem um bau com uma lodestone?', options: ['Housing', 'Stables', 'Bridge', 'Treasure'], correctIndex: 2 },
-  { q: 'Oque o R de MCSR significa?', options: ['Running', 'Renato', 'Ranked', 'Run'], correctIndex: 2 },
+  { q: 'Oque o R de MCSR significa?', options: ['Running', 'Renato', 'Ranked', 'Run'], correctIndex: 0 },
 ];
 
 module.exports = { QUESTIONS };

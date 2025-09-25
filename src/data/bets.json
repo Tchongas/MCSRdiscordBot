@@ -225,5 +225,23 @@
     "settled": true,
     "payout": 500,
     "settledAt": 1758727201616
+  },
+  {
+    "id": "1:702547606613524502:1758766175070",
+    "userId": "702547606613524502",
+    "eventId": "1",
+    "option": "Sim",
+    "amount": 300,
+    "createdAt": 1758766175069,
+    "settled": false
+  },
+  {
+    "id": "3:702547606613524502:1758766222612",
+    "userId": "702547606613524502",
+    "eventId": "3",
+    "option": "Nao",
+    "amount": 180,
+    "createdAt": 1758766222611,
+    "settled": false
   }
 ]
