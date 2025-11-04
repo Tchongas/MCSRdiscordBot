@@ -17,6 +17,7 @@ function formatTimeLeft(ms) {
   const totalSec = Math.ceil(ms / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
   if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
@@ -25,7 +26,7 @@ function formatTimeLeft(ms) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('daily')
-    .setDescription('Responda uma pergunta. Se acertar, ganha 50 moedas (1x a cada 24h).'),
+    .setDescription('Responda uma pergunta. Se acertar, ganha 50 moedas (reseta à meia-noite, horário de Brasília - UTC-3).'),
   async execute(interaction) {
     const userId = interaction.user.id;
 
@@ -45,7 +46,7 @@ module.exports = {
       .setColor(0x00b894)
       .setTitle('Pergunta Diaria')
       .setDescription(q.q)
-      .setFooter({ text: 'Apenas uma tentativa a cada 24h' })
+      .setFooter({ text: 'Reseta à meia-noite (horário de Brasília - UTC-3)' })
       .setTimestamp(new Date());
 
     const row = new ActionRowBuilder().addComponents(

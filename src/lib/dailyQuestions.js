@@ -11,7 +11,15 @@ const QUESTIONS = [
   { q: 'Quem foi o primeiro sub 2 em SSG do brasil?', options: ['Shy', 'Thig', 'Xheb', 'Bepeze'], correctIndex: 2 },
   { q: 'Quantos Strongholds existem em um mundo na 1.16?', options: ['64', '3', '128', '256'], correctIndex: 2 },
   { q: 'Qual bastion tem um bau com uma lodestone?', options: ['Housing', 'Stables', 'Bridge', 'Treasure'], correctIndex: 2 },
-  { q: 'Oque o R de MCSR significa?', options: ['Running', 'Renato', 'Ranked', 'Run'], correctIndex: 0 },
+  { q: 'Oque o R de MCSR significa?', options: ['Rodolfo', 'Renato', 'Ranked', 'Run'], correctIndex: 3 },
+  { q: 'Quantos pilares de obsidian existem no end?', options: ['14', '12', '10', '8'], correctIndex: 2 },
+  { q: 'Qual Bastion tem spawners?', options: ['Housing', 'Stables', 'Bridge', 'Treasure'], correctIndex: 3 },
+  { q: 'Qual desses nomes NAO foi o nome de um runner?', options: ['lazaro_gamer', 'JOAOMINUSCULO', 'DoutorEneas', 'Bostalover'], correctIndex: 3 },
+  { q: 'Qual bastion tem Fungo do nether naturalmente?', options: ['Housing', 'Stables', 'Bridge', 'Treasure'], correctIndex: 0 },
+  { q: 'Quem pegou o primeiro sub 10 do mundo?', options: ['Cube1337x', 'Sizzler', 'Brentilda', 'doogile'], correctIndex: 2 },
+  { q: 'O dragao lentamente desce ate a fonte durante o perch, dando voltas ate chegar no chao, em qual versao isso foi adicionado?', options: ['1.9', '1.14', '1.13.2', '1.12.2'], correctIndex: 1 },
+  { q: 'Qual runner ganhou 1000 reais de premio apos conseguir um novo recorde brasileiro em RSG?', options: ['Batato', 'Brahma', 'Booster', 'doogile'], correctIndex: 2 },
+  { q: 'Qual desses runners NAO xitou uma run?', options: ['Epik', 'Tchongass', 'Asky', 'Xande'], correctIndex: 0 },
 ];
 
 module.exports = { QUESTIONS };

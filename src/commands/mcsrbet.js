@@ -65,9 +65,15 @@ module.exports = {
         // Try to refresh if cache is empty; otherwise use cache
         const cache = betting.listOpenEvents();
         let items = cache;
-        if (items.length === 0) items = await betting.refreshEvents();
+        if (items.length === 0) {
+          await interaction.deferReply(); // Defer to prevent timeout
+          items = await betting.refreshEvents();
+        }
         const open = betting.listOpenEvents();
         if (open.length === 0) {
+          if (interaction.deferred) {
+            return interaction.editReply({ content: 'Nenhuma aposta aberta agora.' });
+          }
           return interaction.reply({ content: 'Nenhuma aposta aberta agora.', ephemeral: true });
         }
         const embed = new EmbedBuilder()
@@ -86,6 +92,10 @@ module.exports = {
           const value = `**${e.title}**\n${EMOJI.ticket} **Opções:** ${optionLines}${fecha ? `\n${EMOJI.calendar} **Fecha:** ${fecha}` : ''}\nTotal apostado: **${pool.toLocaleString('pt-BR')}** ${EMOJI.coin}`;
           embed.addFields({ name: `#${idx + 1} • ID: ${e.id}`, value, inline: false });
         });
+        // Use editReply if we deferred earlier
+        if (interaction.deferred) {
+          return interaction.editReply({ embeds: [embed] });
+        }
         return interaction.reply({ embeds: [embed], ephemeral: false });
       }
 
@@ -102,10 +112,16 @@ module.exports = {
         // ensure event exists (refresh cache if missing)
         let ev = betting.getEventById(eventId);
         if (!ev) {
+          await interaction.deferReply({ ephemeral: true }); // Defer to prevent timeout
           await betting.refreshEvents();
           ev = betting.getEventById(eventId);
         }
-        if (!ev) return interaction.reply({ content: 'Aposta não encontrada.', ephemeral: true });
+        if (!ev) {
+          if (interaction.deferred) {
+            return interaction.editReply({ content: 'Aposta não encontrada.' });
+          }
+          return interaction.reply({ content: 'Aposta não encontrada.', ephemeral: true });
+        }
 
         try {
           const bet = betting.placeBet({ userId, eventId, option, amount });
@@ -120,9 +136,17 @@ module.exports = {
             )
             .setFooter({ text: ev.closesAt ? `${EMOJI.calendar} Fecha: ${formatDateBR(ev.closesAt)}` : 'Sem data de fechamento' })
             .setTimestamp(new Date());
+          // Use editReply if we deferred earlier
+          if (interaction.deferred) {
+            return interaction.editReply({ embeds: [embed] });
+          }
           return interaction.reply({ embeds: [embed], ephemeral: false });
         } catch (e) {
-          return interaction.reply({ content: `Erro ao fazer aposta: ${e.message}`, ephemeral: true });
+          const errorMsg = { content: `Erro ao fazer aposta: ${e.message}`, ephemeral: true };
+          if (interaction.deferred) {
+            return interaction.editReply(errorMsg);
+          }
+          return interaction.reply(errorMsg);
         }
       }
 
@@ -141,6 +165,9 @@ module.exports = {
           const footer = ev?.closesAt ? `${EMOJI.calendar} Fecha: ${formatDateBR(ev.closesAt)}` : '';
           const value = `${EMOJI.ticket} **${title}** (ID: ${b.eventId})\nOpção: ${b.option}\n${EMOJI.coin} Valor: ${b.amount.toLocaleString('pt-BR')} moedas\nCriada: ${created}${footer ? `\n${footer}` : ''}`;
           embed.addFields({ name: `Aposta`, value, inline: false });
+        }
+        if (interaction.deferred) {
+          return interaction.editReply({ embeds: [embed] });
         }
         return interaction.reply({ embeds: [embed], ephemeral: true });
       }
@@ -167,7 +194,11 @@ module.exports = {
 
       return interaction.reply({ content: 'Subcomando desconhecido', ephemeral: true });
     } catch (err) {
-      return interaction.reply({ content: 'Ocorreu um erro ao processar sua solicitação.', ephemeral: true });
+      const errorMsg = { content: 'Ocorreu um erro ao processar sua solicitação.', ephemeral: true };
+      if (interaction.deferred) {
+        return interaction.editReply(errorMsg);
+      }
+      return interaction.reply(errorMsg);
     }
   },
   async autocomplete(interaction) {
