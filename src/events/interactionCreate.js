@@ -1,5 +1,4 @@
 const { Events, MessageFlags } = require('discord.js');
-const economy = require('../lib/economy');
 const daily = require('../lib/daily');
 const logger = require('../lib/logger');
 const { QUESTIONS } = require('../lib/dailyQuestions');
@@ -24,26 +23,23 @@ module.exports = {
         }
         // Enforce 24h cooldown on first click
         if (!daily.canClaim(interaction.user.id)) {
-          return interaction.reply({ content: 'Você já usou o daily nas últimas 24h.', flags: MessageFlags.Ephemeral });
+          return interaction.update({ content: 'Você já usou o daily nas últimas 24h.', components: [] });
         }
-        // Consume daily regardless of correctness (single attempt per 24h)
-        daily.setClaimNow(interaction.user.id);
+        const streak = daily.registerAnswer(interaction.user.id, isCorrect);
         if (isCorrect) {
-          const reward = Number(process.env.DAILY_REWARD || 50);
-          economy.addBalance(interaction.user.id, reward);
           // Announce publicly in the channel without pinging the user or revealing the answer
           try {
             const displayName = interaction.member?.displayName || interaction.user.username;
             const questionText = qIndex !== undefined ? QUESTIONS[qIndex].q : 'a pergunta diária';
-            const msg = `✅ **${displayName}** acertou a pergunta "${questionText}" +${reward} 🪙\n-# Use **/daily** para responder também`;
+            const msg = `✅ **${displayName}** acertou a pergunta "${questionText}"\n-# Streak atual: **${streak}**\n-# Use **/daily** para responder também`;
             await interaction.channel?.send({ content: msg });
           } catch {}
-          return interaction.update({ content: `✅ Resposta correta! Você ganhou ${reward} moedas.`, components: [] });
+          return interaction.update({ content: `✅ Resposta correta! Sua streak atual é ${streak}.`, components: [] });
         } else {
           try {
             const displayName = interaction.member?.displayName || interaction.user.username;
             const questionText = qIndex !== undefined ? QUESTIONS[qIndex].q : 'a pergunta diária';
-            const msg = `❌**${displayName}** ERROU a pergunta "${questionText}" 🪙\n-# Use **/daily** para responder também`;
+            const msg = `❌ **${displayName}** errou a pergunta "${questionText}"\n-# Use **/daily** para responder também`;
             await interaction.channel?.send({ content: msg });
           } catch {}
 

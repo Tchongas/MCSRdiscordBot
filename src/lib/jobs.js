@@ -5,10 +5,12 @@ const logger = require('./logger');
 let registered = [];
 let stopFns = [];
 
+const DISABLED_JOB_FILES = new Set(['betsWatcher.js']);
+
 function loadJobs() {
   const jobsPath = path.join(__dirname, '..', 'jobs');
   if (!fs.existsSync(jobsPath)) return [];
-  const files = fs.readdirSync(jobsPath).filter(f => f.endsWith('.js'));
+  const files = fs.readdirSync(jobsPath).filter(f => f.endsWith('.js') && !DISABLED_JOB_FILES.has(f));
   const mods = [];
   for (const file of files) {
     const filePath = path.join(jobsPath, file);

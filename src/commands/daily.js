@@ -26,7 +26,7 @@ function formatTimeLeft(ms) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('daily')
-    .setDescription('Responda uma pergunta. Se acertar, ganha 50 moedas (reseta à meia-noite, horário de Brasília - UTC-3).'),
+    .setDescription('Responda uma pergunta diária (reseta à meia-noite, horário de Brasília - UTC-3).'),
   async execute(interaction) {
     const userId = interaction.user.id;
 

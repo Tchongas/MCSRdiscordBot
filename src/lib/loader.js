@@ -3,10 +3,12 @@ const path = require('path');
 const { Collection } = require('discord.js');
 const logger = require('./logger');
 
+const DISABLED_COMMAND_FILES = new Set(['conta.js', 'mcsrbet.js', 'ranking.js', 'slots.js']);
+
 function readCommandModules() {
   const commandsPath = path.join(__dirname, '..', 'commands');
   if (!fs.existsSync(commandsPath)) return [];
-  const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'));
+  const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith('.js') && !DISABLED_COMMAND_FILES.has(f));
   const modules = [];
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);

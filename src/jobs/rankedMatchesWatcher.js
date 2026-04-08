@@ -284,6 +284,7 @@ async function runRankedWatcher(client) {
   const newlyPosted = [];
   let considered = 0;
   let skippedDup = 0;
+  let skippedForfeit = 0;
 
   for (const match of matches) {
     const id = match && match.id;
@@ -296,6 +297,11 @@ async function runRankedWatcher(client) {
     // Brazil-only filter: only post if at least one player is Brazilian
     const anyBR = players.some(p => isBrazil(p?.country));
     if (!anyBR) { inFlight.delete(id); continue; }
+    if (match?.forfeited) {
+      skippedForfeit++;
+      inFlight.delete(id);
+      continue;
+    }
 
     // Build and send embed
     try {
@@ -310,7 +316,7 @@ async function runRankedWatcher(client) {
     }
   }
 
-  logger.info(`rankedMatchesWatcher: done. considered=${considered} posted=${newlyPosted.length} skippedDup=${skippedDup}`);
+  logger.info(`rankedMatchesWatcher: done. considered=${considered} posted=${newlyPosted.length} skippedDup=${skippedDup} skippedForfeit=${skippedForfeit}`);
 }
 
 module.exports = {

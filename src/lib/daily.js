@@ -27,6 +27,21 @@ function isSameBrazilDay(aMs, bMs) {
   return toDayKey(aMs) === toDayKey(bMs);
 }
 
+function isPreviousBrazilDay(previousMs, currentMs) {
+  if (!previousMs) return false;
+  const currentZoned = new Date(currentMs + BRASILIA_TZ_OFFSET_MS);
+  const previousDayStartUtc = Date.UTC(
+    currentZoned.getUTCFullYear(),
+    currentZoned.getUTCMonth(),
+    currentZoned.getUTCDate() - 1,
+    0,
+    0,
+    0
+  );
+  const previousDayEpoch = previousDayStartUtc - BRASILIA_TZ_OFFSET_MS;
+  return toDayKey(previousMs) === toDayKey(previousDayEpoch);
+}
+
 function msUntilNextMidnight(now = Date.now()) {
   // Compute next midnight in Brasília time, then convert back to epoch ms
   const zoned = new Date(now + BRASILIA_TZ_OFFSET_MS);
@@ -45,10 +60,42 @@ function getLastClaim(userId) {
   return Number(db[userId]?.lastClaimAt || 0);
 }
 
+function getRecord(userId) {
+  const db = load();
+  return db[userId] || { lastClaimAt: 0, streak: 0 };
+}
+
+function getStreak(userId) {
+  const rec = getRecord(userId);
+  return Number(rec.streak || 0);
+}
+
 function setClaimNow(userId) {
   const db = load();
-  db[userId] = { lastClaimAt: Date.now() };
+  const current = db[userId] || { streak: 0 };
+  db[userId] = { ...current, lastClaimAt: Date.now() };
   save(db);
+}
+
+function registerAnswer(userId, isCorrect, now = Date.now()) {
+  const db = load();
+  const current = db[userId] || { lastClaimAt: 0, streak: 0 };
+  const previousClaimAt = Number(current.lastClaimAt || 0);
+
+  let streak = Number(current.streak || 0);
+  if (isCorrect) {
+    streak = isPreviousBrazilDay(previousClaimAt, now) ? streak + 1 : 1;
+  } else {
+    streak = 0;
+  }
+
+  db[userId] = {
+    ...current,
+    lastClaimAt: now,
+    streak,
+  };
+  save(db);
+  return streak;
 }
 
 function timeLeftMs(userId, now = Date.now()) {
@@ -63,5 +110,5 @@ function canClaim(userId, now = Date.now()) {
   return timeLeftMs(userId, now) === 0;
 }
 
-module.exports = { getLastClaim, setClaimNow, timeLeftMs, canClaim, DAY_MS, msUntilNextMidnight };
+module.exports = { getLastClaim, getStreak, setClaimNow, registerAnswer, timeLeftMs, canClaim, DAY_MS, msUntilNextMidnight };
 
