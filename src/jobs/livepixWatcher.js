@@ -1,18 +1,19 @@
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../lib/logger');
 const { createIntervalJob } = require('../lib/jobs');
-const { loadPostedPaymentsSet, savePostedPaymentsSet } = require('../lib/livepixCache');
+const { loadPostedMessagesSet, savePostedMessagesSet } = require('../lib/livepixCache');
 
-const postedSet = loadPostedPaymentsSet();
+const postedSet = loadPostedMessagesSet();
 const inFlight = new Set();
+let tokenCache = { accessToken: '', expiresAt: 0 };
 
 function rememberPosted(id) {
   if (postedSet.has(id)) return;
   postedSet.add(id);
-  try { savePostedPaymentsSet(postedSet); } catch {}
+  try { savePostedMessagesSet(postedSet); } catch {}
 }
 
-function normalizePaymentsPayload(data) {
+function normalizeMessagesPayload(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.data)) return data.data;
   if (Array.isArray(data?.items)) return data.items;
@@ -20,8 +21,8 @@ function normalizePaymentsPayload(data) {
   return [];
 }
 
-function paymentIdOf(payment) {
-  return String(payment?.id || payment?.proof || payment?.reference || '');
+function messageIdOf(message) {
+  return String(message?.id || message?.proof || message?.reference || '');
 }
 
 function toCurrencyAmount(amount, currency = 'BRL') {
@@ -35,52 +36,120 @@ function toCurrencyAmount(amount, currency = 'BRL') {
   }
 }
 
-function pickDisplayName(payment) {
-  return payment?.name || payment?.senderName || payment?.from?.name || payment?.customer?.name || 'Anônimo';
+ function pickDisplayName(message) {
+  return message?.username || message?.name || message?.senderName || message?.from?.name || 'Anônimo';
 }
 
-function pickMessage(payment) {
-  return payment?.message || payment?.comment || payment?.metadata?.message || payment?.description || null;
+function pickMessage(message) {
+  return message?.message || message?.comment || message?.metadata?.message || message?.description || null;
 }
 
-function paymentTimestamp(payment) {
-  return payment?.createdAt || payment?.created_at || payment?.date || payment?.paidAt || null;
+function messageTimestamp(message) {
+  return message?.createdAt || message?.created_at || message?.date || null;
 }
 
-function buildPaymentEmbed(payment) {
-  const amount = toCurrencyAmount(payment?.amount, payment?.currency || 'BRL');
-  const name = pickDisplayName(payment);
-  const message = pickMessage(payment);
-  const reference = payment?.reference || '—';
-  const proof = payment?.proof || '—';
-  const currency = payment?.currency || 'BRL';
+function truncateText(value, max = 500) {
+  const text = String(value || '');
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function compactText(value, fallback = '—') {
+  const text = String(value || '').trim();
+  return text || fallback;
+}
+
+function buildMessageEmbed(messageData) {
+  const amount = toCurrencyAmount(messageData?.amount, messageData?.currency || 'BRL');
+  const name = pickDisplayName(messageData);
+  const message = pickMessage(messageData);
+  const ts = messageTimestamp(messageData);
+  const date = ts ? new Date(ts) : null;
+  const timeLabel = date && !Number.isNaN(date.getTime())
+    ? new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'America/Sao_Paulo',
+    }).format(date)
+    : null;
+  const messageText = compactText(message, 'Sem mensagem enviada.');
 
   const embed = new EmbedBuilder()
-    .setColor(0x57f287)
-    .setTitle('Novo pagamento recebido')
+    .setColor(0x58d756)
+    .setAuthor({
+      name: `${compactText(name).slice(0, 220)} enviou um LivePix!`,
+      iconURL: 'https://img.icons8.com/fluent/512/pix.png',
+    })
+    .setTitle('Mensagem:')
+    .setDescription(messageText.slice(0, 4096))
     .addFields(
-      { name: 'Nome', value: String(name), inline: true },
-      { name: 'Valor', value: amount, inline: true },
-      { name: 'Moeda', value: String(currency), inline: true },
-      { name: 'Referência', value: String(reference).slice(0, 1024), inline: false },
-      { name: 'Comprovante', value: String(proof).slice(0, 1024), inline: false }
+      { name: '💰 Valor', value: amount, inline: false },
+      { name: 'livepix.gg/mcsr', value: '‎', inline: false }
     )
-    .setFooter({ text: `Payment ID: ${paymentIdOf(payment)}` });
+    .setFooter({
+      text: timeLabel || 'Sem horário',
+      iconURL: 'https://i.imgur.com/1D4e1lY.png',
+    });
 
-  if (message) {
-    embed.setDescription(String(message).slice(0, 4096));
-  }
-
-  const ts = paymentTimestamp(payment);
-  if (ts) {
-    const date = new Date(ts);
-    if (!Number.isNaN(date.getTime())) embed.setTimestamp(date);
+  if (date && !Number.isNaN(date.getTime())) {
+    embed.setTimestamp(date);
   }
 
   return embed;
 }
 
-async function fetchPayments(apiUrl, accessToken) {
+async function fetchClientCredentialsToken() {
+  const { LIVEPIX_CLIENT_ID, LIVEPIX_CLIENT_SECRET, LIVEPIX_OAUTH_URL, LIVEPIX_SCOPE } = process.env;
+  const oauthUrl = LIVEPIX_OAUTH_URL || 'https://oauth.livepix.gg/oauth2/token';
+  const scope = LIVEPIX_SCOPE || 'messages:read';
+
+  if (!LIVEPIX_CLIENT_ID || !LIVEPIX_CLIENT_SECRET) {
+    throw new Error('Missing LIVEPIX_CLIENT_ID or LIVEPIX_CLIENT_SECRET');
+  }
+
+  if (tokenCache.accessToken && tokenCache.expiresAt > Date.now() + 30000) {
+    return tokenCache.accessToken;
+  }
+
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: LIVEPIX_CLIENT_ID,
+    client_secret: LIVEPIX_CLIENT_SECRET,
+    scope,
+  });
+
+  const res = await fetch(oauthUrl, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const errorText = truncateText(await res.text());
+    throw new Error(`LivePix OAuth returned ${res.status}: ${errorText}`);
+  }
+
+  const data = await res.json();
+
+  const accessToken = String(data?.access_token || '');
+  const expiresIn = Number(data?.expires_in || 0);
+
+  if (!accessToken) {
+    throw new Error('LivePix OAuth response did not include access_token');
+  }
+
+  tokenCache = {
+    accessToken,
+    expiresAt: Date.now() + Math.max(0, expiresIn * 1000),
+  };
+
+  return accessToken;
+}
+
+async function fetchMessages(apiUrl, retry = true) {
+  const accessToken = await fetchClientCredentialsToken();
   const res = await fetch(apiUrl, {
     headers: {
       accept: 'application/json',
@@ -89,34 +158,41 @@ async function fetchPayments(apiUrl, accessToken) {
   });
 
   if (!res.ok) {
-    throw new Error(`LivePix returned ${res.status}`);
+    const errorText = truncateText(await res.text());
+    if (res.status === 401 && retry) {
+      tokenCache = { accessToken: '', expiresAt: 0 };
+      logger.warn(`livepixWatcher: LivePix returned 401, retrying with a fresh token. Response: ${errorText}`);
+      return fetchMessages(apiUrl, false);
+    }
+    throw new Error(`LivePix returned ${res.status}: ${errorText}`);
   }
 
   return await res.json();
 }
 
 async function runLivePixWatcher(client) {
-  const { LIVEPIX_PAYMENTS_API_URL, LIVEPIX_ACCESS_TOKEN, LIVEPIX_ANNOUNCE_CHANNEL_ID } = process.env;
+  const { LIVEPIX_MESSAGES_API_URL, LIVEPIX_PAYMENTS_API_URL, LIVEPIX_ANNOUNCE_CHANNEL_ID, LIVEPIX_CLIENT_ID, LIVEPIX_CLIENT_SECRET } = process.env;
+  const apiUrl = LIVEPIX_MESSAGES_API_URL || LIVEPIX_PAYMENTS_API_URL;
 
-  if (!LIVEPIX_PAYMENTS_API_URL || !LIVEPIX_ACCESS_TOKEN || !LIVEPIX_ANNOUNCE_CHANNEL_ID) {
-    logger.warn('livepixWatcher: missing LIVEPIX_PAYMENTS_API_URL, LIVEPIX_ACCESS_TOKEN, or LIVEPIX_ANNOUNCE_CHANNEL_ID; skipping');
+  if (!apiUrl || !LIVEPIX_CLIENT_ID || !LIVEPIX_CLIENT_SECRET || !LIVEPIX_ANNOUNCE_CHANNEL_ID) {
+    logger.warn('livepixWatcher: missing LIVEPIX_MESSAGES_API_URL (or LIVEPIX_PAYMENTS_API_URL), LIVEPIX_CLIENT_ID, LIVEPIX_CLIENT_SECRET, or LIVEPIX_ANNOUNCE_CHANNEL_ID; skipping');
     return;
   }
 
   let data;
   try {
-    data = await fetchPayments(LIVEPIX_PAYMENTS_API_URL, LIVEPIX_ACCESS_TOKEN);
+    data = await fetchMessages(apiUrl);
   } catch (error) {
     logger.error('livepixWatcher: fetch failed:', error);
     return;
   }
 
-  const payments = normalizePaymentsPayload(data)
+  const messages = normalizeMessagesPayload(data)
     .filter(Boolean)
     .sort((a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime());
 
-  if (payments.length === 0) {
-    logger.info('livepixWatcher: no payments returned');
+  if (messages.length === 0) {
+    logger.info('livepixWatcher: no messages returned');
     return;
   }
 
@@ -132,8 +208,8 @@ async function runLivePixWatcher(client) {
   let posted = 0;
   let skippedDup = 0;
 
-  for (const payment of payments) {
-    const id = paymentIdOf(payment);
+  for (const messageData of messages) {
+    const id = messageIdOf(messageData);
     if (!id) continue;
     if (postedSet.has(id) || inFlight.has(id)) {
       skippedDup++;
@@ -142,23 +218,23 @@ async function runLivePixWatcher(client) {
 
     inFlight.add(id);
     try {
-      const embed = buildPaymentEmbed(payment);
+      const embed = buildMessageEmbed(messageData);
       await channel.send({ embeds: [embed] });
       rememberPosted(id);
       posted++;
     } catch (error) {
-      logger.error(`livepixWatcher: failed to send payment ${id}:`, error);
+      logger.error(`livepixWatcher: failed to send message ${id}:`, error);
     } finally {
       inFlight.delete(id);
     }
   }
 
-  logger.info(`livepixWatcher: done. received=${payments.length} posted=${posted} skippedDup=${skippedDup}`);
+  logger.info(`livepixWatcher: done. received=${messages.length} posted=${posted} skippedDup=${skippedDup}`);
 }
 
 module.exports = {
   async register({ register }) {
-    const intervalMs = Number(process.env.LIVEPIX_POLL_MS) || 15000;
+    const intervalMs = Number(process.env.LIVEPIX_POLL_MS) || 10 * 60 * 1000;
     register(
       createIntervalJob({
         name: 'livepixWatcher',
