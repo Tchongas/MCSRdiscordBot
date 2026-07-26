@@ -1,22 +1,85 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { ActionRowBuilder, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { addToWhitelist, removeFromWhitelist, getWhitelistSet } = require('../lib/pacemanWhitelist');
+const { TIER_ROLE_IDS } = require('../lib/pacemanPingSystem');
 
 const REQUIRED_ROLE_ID = process.env.PACEMAN_REQUIRED_ROLE_ID;
 const REQUIRED_PERMISSION_NAME = process.env.PACEMAN_REQUIRED_PERMISSION;
+const PACEMAN_CHANNEL_ID = process.env.PACEMAN_CHANNEL_ID;
 const REQUIRED_PERMISSION = REQUIRED_PERMISSION_NAME && PermissionFlagsBits[REQUIRED_PERMISSION_NAME]
   ? PermissionFlagsBits[REQUIRED_PERMISSION_NAME]
   : null;
 
 const data = new SlashCommandBuilder()
   .setName('paceman')
-  .setDescription('Manage the Paceman whitelist');
+  .setDescription('Paceman: notificações e whitelist');
 
-if (REQUIRED_ROLE_ID) {
-  // Role-based checks are done at runtime; don't hide the command by permission.
-} else if (REQUIRED_PERMISSION) {
-  data.setDefaultMemberPermissions(REQUIRED_PERMISSION);
-} else {
-  data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+function canManageWhitelist(interaction) {
+  if (REQUIRED_ROLE_ID) {
+    return interaction.member.roles.cache.has(REQUIRED_ROLE_ID)
+      || Boolean(REQUIRED_PERMISSION && interaction.memberPermissions?.has(REQUIRED_PERMISSION));
+  }
+  if (REQUIRED_PERMISSION) return interaction.memberPermissions?.has(REQUIRED_PERMISSION);
+  return interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+}
+
+function getNotificationLevel(member) {
+  let level = -1;
+  for (let i = 0; i < TIER_ROLE_IDS.length; i++) {
+    if (TIER_ROLE_IDS[i] && member.roles.cache.has(TIER_ROLE_IDS[i])) level = i;
+  }
+  return level;
+}
+
+function notificationSelector(level) {
+  const channel = PACEMAN_CHANNEL_ID ? `<#${PACEMAN_CHANNEL_ID}>` : 'o canal de Paceman';
+  const current = level === -1
+    ? 'Você ainda não recebe alertas.'
+    : 'Sua seleção atual está salva.';
+  const embed = new EmbedBuilder()
+    .setColor(0x9146ff)
+    .setTitle('🔔 Notificações do Paceman')
+    .setDescription([
+      '**Acompanhe as runs ao vivo sem perder o que importa.**',
+      `Você será pingado em ${channel} quando uma run alcançar os tempos da opção escolhida.`,
+      '',
+      `-# ${current}`,
+    ].join('\n'));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('paceman:notifications')
+    .setPlaceholder('Escolha suas notificações')
+    .addOptions(
+      {
+        label: 'Somente as melhores runs',
+        description: 'Portal <5:40 • Stronghold <6:50 • End <7:10',
+        value: '0',
+        emoji: '🏆',
+        default: level === 0,
+      },
+      {
+        label: 'Runs muito rápidas',
+        description: 'Inclui o anterior + Portal <7:00 • Stronghold <9:00 • End <10:00',
+        value: '1',
+        emoji: '⚡',
+        default: level === 1,
+      },
+      {
+        label: 'Todas as notificações',
+        description: 'Inclui os anteriores + Portal <8:00 • Stronghold <12:00 • End <13:00',
+        value: '2',
+        emoji: '🔔',
+        default: level === 2,
+      },
+      {
+        label: 'Desativar notificações',
+        description: 'Remover todos os alertas do Paceman',
+        value: 'none',
+        emoji: '🔕',
+        default: level === -1,
+      },
+    );
+
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(select)] };
 }
 
 data
@@ -36,25 +99,28 @@ data
       .setRequired(true)))
   .addSubcommand(sub => sub
     .setName('list')
-    .setDescription('List whitelisted Paceman nicknames'));
+    .setDescription('List whitelisted Paceman nicknames'))
+  .addSubcommand(sub => sub
+    .setName('cargos')
+    .setDescription('Escolha suas notificações do Paceman')); 
 
 module.exports = {
   data,
 
   async execute(interaction) {
-    if (REQUIRED_ROLE_ID) {
-      const hasRole = interaction.member.roles.cache.has(REQUIRED_ROLE_ID);
-      const hasPermission = REQUIRED_PERMISSION && interaction.memberPermissions?.has(REQUIRED_PERMISSION);
-      if (!hasRole && !hasPermission) {
-        return interaction.reply({ content: 'Você não tem permissão para usar este comando.', ephemeral: true });
+    const sub = interaction.options.getSubcommand();
+
+    if (sub === 'cargos') {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: 'Esse comando só pode ser usado em um servidor.', ephemeral: true });
       }
-    } else if (REQUIRED_PERMISSION) {
-      if (!interaction.memberPermissions?.has(REQUIRED_PERMISSION)) {
-        return interaction.reply({ content: 'Você não tem permissão para usar este comando.', ephemeral: true });
-      }
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      return interaction.reply({ ...notificationSelector(getNotificationLevel(member)), ephemeral: true });
     }
 
-    const sub = interaction.options.getSubcommand();
+    if (!canManageWhitelist(interaction)) {
+      return interaction.reply({ content: 'Você não tem permissão para usar este comando.', ephemeral: true });
+    }
 
     if (sub === 'add') {
       const nickname = interaction.options.getString('nickname', true);
@@ -85,5 +151,40 @@ module.exports = {
         : 'A whitelist do Paceman está vazia.';
       return interaction.reply({ content: text, ephemeral: true });
     }
+  },
+
+  async handleNotificationSelection(interaction) {
+    if (!interaction.inGuild()) {
+      return interaction.reply({ content: 'Esse menu só pode ser usado em um servidor.', ephemeral: true });
+    }
+
+    const configuredRoleIds = TIER_ROLE_IDS.filter(Boolean);
+    if (configuredRoleIds.length !== TIER_ROLE_IDS.length) {
+      return interaction.reply({ content: 'As notificações do Paceman ainda não foram configuradas.', ephemeral: true });
+    }
+
+    const notificationRoles = configuredRoleIds.map(id => interaction.guild.roles.cache.get(id));
+    if (notificationRoles.some(role => !role)) {
+      return interaction.reply({ content: 'Um cargo de notificação configurado não foi encontrado neste servidor.', ephemeral: true });
+    }
+    if (notificationRoles.some(role => !role.editable)) {
+      return interaction.reply({ content: 'Não consigo gerenciar os cargos de notificação. Mova o cargo do bot acima deles.', ephemeral: true });
+    }
+
+    const member = await interaction.guild.members.fetch(interaction.user.id);
+    const selected = interaction.values[0];
+    const level = selected === 'none' ? -1 : Number(selected);
+    if (!Number.isInteger(level) || level < -1 || level >= TIER_ROLE_IDS.length) {
+      return interaction.reply({ content: 'Opção de notificação inválida.', ephemeral: true });
+    }
+
+    await member.roles.remove(configuredRoleIds);
+    if (level >= 0) await member.roles.add(TIER_ROLE_IDS.slice(0, level + 1));
+
+    const updatedMember = await interaction.guild.members.fetch(interaction.user.id);
+    const content = level === -1
+      ? '🔕 Notificações do Paceman desativadas.'
+      : '✅ Notificações atualizadas. Você receberá esta seleção e todos os alertas mais exclusivos.';
+    return interaction.update({ content, ...notificationSelector(getNotificationLevel(updatedMember)) });
   },
 };

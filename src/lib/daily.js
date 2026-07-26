@@ -207,27 +207,23 @@ async function buildLeaderboardEmbed(client, limit = 8, title = '🏆 Daily Lead
   const nameWidth = Math.max(6, ...withNames.map(e => codePointLength(e.name)));
   const errNumWidth = Math.max(1, ...withNames.map(e => String(e.incorrect).length));
   const correctNumWidth = Math.max(1, ...withNames.map(e => String(e.correct).length));
-  const scoreNumWidth = Math.max(1, ...withNames.map(e => String(e.score).length));
 
   const errLabel = `${INCORRECT_EMOJI} Erros `;
   const correctLabel = `${CORRECT_EMOJI} Acertos `;
-  const scoreLabel = 'Score: ';
 
   const lines = withNames.map((e, i) => {
     const rank = `${i + 1}.`.padEnd(rankWidth);
     const name = padEndCp(e.name, nameWidth);
     const err = `${errLabel}${String(e.incorrect).padStart(errNumWidth)}`;
     const correct = `${correctLabel}${String(e.correct).padStart(correctNumWidth)}`;
-    const score = `${scoreLabel}${String(e.score).padStart(scoreNumWidth)}`;
-    return `${rank} ${name}  ${err}  ${correct}  ${score}`;
+    return `${rank} ${name}  ${err}  ${correct}`;
   });
 
   const headerRank = '#'.padEnd(rankWidth);
   const headerName = padEndCp('Jogador', nameWidth);
   const headerErr = `${errLabel}${''.padStart(errNumWidth)}`;
   const headerCorrect = `${correctLabel}${''.padStart(correctNumWidth)}`;
-  const headerScore = `${scoreLabel}${''.padStart(scoreNumWidth)}`;
-  const header = `${headerRank} ${headerName}  ${headerErr}  ${headerCorrect}  ${headerScore}`;
+  const header = `${headerRank} ${headerName}  ${headerErr}  ${headerCorrect}`;
 
   embed.setDescription(`\`\`\`\n${header}\n${lines.join('\n')}\n\`\`\``);
   embed.setFooter({ text: 'Reseta à meia-noite (horário de Brasília - UTC-3)' });

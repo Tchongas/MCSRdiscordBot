@@ -50,6 +50,23 @@ module.exports = {
       return; // other buttons ignored
     }
 
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId !== 'paceman:notifications') return;
+      const command = client.commands.get('paceman');
+      if (!command?.handleNotificationSelection) return;
+      try {
+        await command.handleNotificationSelection(interaction);
+      } catch (error) {
+        logger.error('Error updating Paceman notifications:', error);
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp({ content: 'Não foi possível atualizar suas notificações. Tente novamente.', flags: MessageFlags.Ephemeral });
+        } else {
+          await interaction.reply({ content: 'Não foi possível atualizar suas notificações. Verifique se o cargo do bot está acima dos cargos de notificação.', flags: MessageFlags.Ephemeral });
+        }
+      }
+      return;
+    }
+
     // Autocomplete for slash commands
     if (interaction.isAutocomplete()) {
       const command = client.commands.get(interaction.commandName);

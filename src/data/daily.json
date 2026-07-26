@@ -6,9 +6,9 @@
     "incorrect": 0
   },
   "755487663762440384": {
-    "lastClaimAt": 1784294617393,
+    "lastClaimAt": 1785032577218,
     "streak": 1,
-    "correct": 1,
+    "correct": 2,
     "incorrect": 0
   },
   "420322285283704833": {
@@ -70,10 +70,10 @@
     "incorrect": 0
   },
   "455543667827146762": {
-    "lastClaimAt": 1784298413302,
+    "lastClaimAt": 1785027575805,
     "streak": 0,
     "correct": 0,
-    "incorrect": 1
+    "incorrect": 2
   },
   "536888749452165130": {
     "lastClaimAt": 1784301216354,
@@ -83,6 +83,12 @@
   },
   "677266020754522145": {
     "lastClaimAt": 1784301768080,
+    "streak": 1,
+    "correct": 1,
+    "incorrect": 0
+  },
+  "980623955264172092": {
+    "lastClaimAt": 1785032784807,
     "streak": 1,
     "correct": 1,
     "incorrect": 0

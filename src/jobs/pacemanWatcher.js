@@ -3,12 +3,18 @@ const logger = require('../lib/logger');
 const { createIntervalJob } = require('../lib/jobs');
 const { loadPostedCache, savePostedCache } = require('../lib/pacemanCache');
 const { getWhitelistSet } = require('../lib/pacemanWhitelist');
-const { getPendingPings, markTierIndexesPinged } = require('../lib/pacemanPingSystem');
+const {
+  getPendingPings,
+  getPendingCreditsPings,
+  markTierIndexesPinged,
+  markCreditsTierIndexesPinged,
+} = require('../lib/pacemanPingSystem');
 
 const PACEMAN_API_URL = process.env.PACEMAN_API_URL || 'https://paceman.gg/api/ars/liveruns';
 const PACEMAN_GAME_VERSION = process.env.PACEMAN_GAME_VERSION || '1.16.1';
 const PACEMAN_POLL_MS = Number(process.env.PACEMAN_POLL_MS) || 15000;
 const PACEMAN_CHANNEL_ID = process.env.PACEMAN_CHANNEL_ID;
+const PACEMAN_CREDITS_CHANNEL_ID = process.env.PACEMAN_CREDITS_CHANNEL_ID;
 
 const TWITCH_EMOJI = process.env.TWITCH_EMOJI || '📺';
 const OFFLINE_EMOJI = process.env.OFFLINE_EMOJI || ':no_mobile_phones:';
@@ -191,6 +197,22 @@ function buildSplitEmbed(run, event, skippedWhitelist = false) {
   return embed;
 }
 
+async function postCreditsNotification(creditsChannel, run, worldId, event) {
+  if (!creditsChannel || event.eventId !== 'rsg.credits') return;
+
+  const { content, tierIndexes } = getPendingCreditsPings(worldId, event);
+  if (tierIndexes.length === 0) return;
+
+  const sendOptions = { embeds: [buildSplitEmbed(run, event)] };
+  if (content) sendOptions.content = content;
+  try {
+    await creditsChannel.send(sendOptions);
+    markCreditsTierIndexesPinged(worldId, tierIndexes);
+  } catch (error) {
+    logger.error(`pacemanWatcher: failed to send Credits notification for ${worldId}:`, error);
+  }
+}
+
 function getRunCache(worldId) {
   if (!postedCache[worldId]) {
     postedCache[worldId] = { postedEventIds: [], nickname: null, lastUpdated: 0 };
@@ -265,6 +287,15 @@ async function runPacemanWatcher(client) {
     return;
   }
 
+  const creditsChannel = PACEMAN_CREDITS_CHANNEL_ID
+    ? await client.channels
+      .fetch(PACEMAN_CREDITS_CHANNEL_ID)
+      .catch(err => { logger.warn(`pacemanWatcher: failed to fetch Credits channel ${PACEMAN_CREDITS_CHANNEL_ID}: ${err?.message || err}`); return null; })
+    : null;
+  if (creditsChannel && !creditsChannel.isTextBased()) {
+    logger.warn(`pacemanWatcher: invalid Credits channel ${PACEMAN_CREDITS_CHANNEL_ID}`);
+  }
+
   let considered = 0;
   let skipped = 0;
   let posted = 0;
@@ -309,6 +340,10 @@ async function runPacemanWatcher(client) {
         } else {
           await channel.send(sendOptions);
         }
+        if (whitelisted) {
+          const creditsEvent = unpostedEvents.find(e => e.eventId === 'rsg.credits');
+          await postCreditsNotification(creditsChannel?.isTextBased() ? creditsChannel : null, run, worldId, creditsEvent || {});
+        }
         for (const e of unpostedEvents) markPosted(worldId, e.eventId, nickname);
         try { savePostedCache(postedCache); } catch {}
         posted++;
@@ -334,6 +369,10 @@ async function runPacemanWatcher(client) {
           if (tierIndexes.length > 0) markTierIndexesPinged(worldId, tierIndexes);
         } else {
           await channel.send(sendOptions);
+        }
+        if (whitelisted) {
+          const creditsEvent = unpostedEvents.find(e => e.eventId === 'rsg.credits');
+          await postCreditsNotification(creditsChannel?.isTextBased() ? creditsChannel : null, run, worldId, creditsEvent || {});
         }
         for (const e of unpostedEvents) markPosted(worldId, e.eventId, nickname);
         try { savePostedCache(postedCache); } catch {}
