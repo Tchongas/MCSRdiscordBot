@@ -6,7 +6,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_QUESTION_LENGTH = 1500;
 const MAX_ANSWER_LENGTH = 3500;
 const REQUEST_WINDOW_MS = 60 * 1000;
-const DEFAULT_REFUSAL_MESSAGE = 'Não consigo ajudar com essa solicitação. Tente reformular sua pergunta ou pergunte algo diferente.';
+const DEFAULT_REFUSAL_MESSAGE = 'Vish.';
 const cooldowns = new Map();
 const activeUsers = new Set();
 const recentRequests = [];
@@ -20,8 +20,8 @@ function buildEmbed({ description, color = 0x5865f2 }) {
   const avatarUrl = process.env.DARKGPT_AVATAR_URL || 'https://mc-heads.net/avatar/darkk575.png';
   return new EmbedBuilder()
     .setColor(color)
-    .setTitle('DarkGPT - Melhor IA para MCSR')
-    .setDescription(`⬜ **DarkGPT:**\n${description}`)
+    .setTitle('⬜ DarkGPT:')
+    .setDescription(description)
     .setThumbnail(avatarUrl)
     .setFooter({ text: 'Powered by OpenAI/DarkGPT' })
     .setTimestamp();
@@ -36,6 +36,7 @@ module.exports = {
     if (!match) return;
 
     const question = String(match[1] || '').trim();
+    const senderName = truncate(message.member?.displayName || message.author.globalName || message.author.username, 100);
     if (!question) {
       return message.reply({
         embeds: [buildEmbed({
@@ -106,7 +107,10 @@ module.exports = {
               role: 'system',
               content: 'You are darkgpt, a helpful Discord assistant. Reply in the same language as the user. Be clear, concise, and friendly.',
             },
-            { role: 'user', content: truncate(question, MAX_QUESTION_LENGTH) },
+            {
+              role: 'user',
+              content: `Falando com: ${senderName}\n${truncate(question, MAX_QUESTION_LENGTH)}`, 
+            },
           ],
         }),
       });

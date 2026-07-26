@@ -178,13 +178,16 @@ module.exports = {
       return interaction.reply({ content: 'Opção de notificação inválida.', ephemeral: true });
     }
 
-    await member.roles.remove(configuredRoleIds);
-    if (level >= 0) await member.roles.add(TIER_ROLE_IDS.slice(0, level + 1));
+    const selectedRoleId = level >= 0 ? TIER_ROLE_IDS[level] : null;
+    const currentNotificationRoleIds = configuredRoleIds.filter(roleId => member.roles.cache.has(roleId));
+    const rolesToRemove = currentNotificationRoleIds.filter(roleId => roleId !== selectedRoleId);
 
-    const updatedMember = await interaction.guild.members.fetch(interaction.user.id);
+    if (rolesToRemove.length > 0) await member.roles.remove(rolesToRemove);
+    if (selectedRoleId && !member.roles.cache.has(selectedRoleId)) await member.roles.add(selectedRoleId);
+
     const content = level === -1
       ? '🔕 Notificações do Paceman desativadas.'
-      : '✅ Notificações atualizadas. Você receberá esta seleção e todos os alertas mais exclusivos.';
-    return interaction.update({ content, ...notificationSelector(getNotificationLevel(updatedMember)) });
+      : '✅ Notificações atualizadas.';
+    return interaction.update({ content, ...notificationSelector(level) });
   },
 };
