@@ -1,5 +1,6 @@
 const { EmbedBuilder, Events } = require('discord.js');
 const logger = require('../lib/logger');
+const { findMentions } = require('../lib/ragSearch');
 
 const PREFIX = 'darkgpt';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -16,14 +17,14 @@ function truncate(value, limit) {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
-function buildEmbed({ description, color = 0x5865f2 }) {
+function buildEmbed({ description, color = 0x5865f2, footerText = 'Powered by OpenAI/DarkGPT' }) {
   const avatarUrl = process.env.DARKGPT_AVATAR_URL || 'https://mc-heads.net/avatar/darkk575.png';
   return new EmbedBuilder()
     .setColor(color)
     .setTitle('⬜ DarkGPT:')
     .setDescription(description)
     .setThumbnail(avatarUrl)
-    .setFooter({ text: 'Powered by OpenAI/DarkGPT' })
+    .setFooter({ text: footerText })
     .setTimestamp();
 }
 
@@ -36,7 +37,8 @@ module.exports = {
     if (!match) return;
 
     const question = String(match[1] || '').trim();
-    const senderName = truncate(message.member?.displayName || message.author.globalName || message.author.username, 100);
+    const displayName = truncate(message.member?.displayName || message.author.globalName || message.author.username, 100);
+    const senderName = truncate(message.author.username, 100);
     if (!question) {
       return message.reply({
         embeds: [buildEmbed({
@@ -92,6 +94,9 @@ module.exports = {
 
     try {
       await message.channel.sendTyping();
+      const ragContext = await findMentions(senderName, question);
+      const systemContent = 'You are darkgpt, a helpful Discord assistant. Reply in the same language as the user. Be clear, concise, and friendly.' +
+        (ragContext ? `\n\nRelevant context from project files:\n${ragContext}` : '');
       const response = await fetch(OPENROUTER_URL, {
         method: 'POST',
         headers: {
@@ -105,11 +110,11 @@ module.exports = {
           messages: [
             {
               role: 'system',
-              content: 'You are darkgpt, a helpful Discord assistant. Reply in the same language as the user. Be clear, concise, and friendly.',
+              content: systemContent,
             },
             {
               role: 'user',
-              content: `Falando com: ${senderName}\n${truncate(question, MAX_QUESTION_LENGTH)}`, 
+              content: `Falando com: ${displayName} (@${senderName})\n${truncate(question, MAX_QUESTION_LENGTH)}`, 
             },
           ],
         }),
@@ -135,9 +140,18 @@ module.exports = {
         });
       }
 
+      const usage = data?.usage;
+      let footerText = 'Powered by OpenAI/DarkGPT';
+      if (usage && (usage.prompt_tokens != null || usage.completion_tokens != null)) {
+        const promptTokens = usage.prompt_tokens ?? 0;
+        const completionTokens = usage.completion_tokens ?? 0;
+        footerText = `in: ${promptTokens} / out: ${completionTokens}`;
+      }
+
       return message.reply({
         embeds: [buildEmbed({
           description: truncate(answer, MAX_ANSWER_LENGTH),
+          footerText,
         })],
         allowedMentions: { repliedUser: false },
       });

@@ -28,6 +28,9 @@ let rsgRunsCache = [];
 let ssgRunsCache = [];
 let profileCacheLoaded = false;
 
+const RANKED_CACHE_TTL_MS = Number(process.env.RANKED_CACHE_TTL_MS) || 5 * 60 * 1000;
+const rankedStatsCache = new Map();
+
 function buildApiUrl(action) {
   return `${GOOGLE_RUNS_API_BASE}?action=${action}`;
 }
@@ -416,6 +419,97 @@ async function fetchRankedStats(uuid, timeoutMs = 10000) {
   }
 }
 
+async function getRankedStatsByUuid(uuid) {
+  const key = String(uuid).replace(/-/g, '');
+  const cached = rankedStatsCache.get(key);
+  if (cached && Date.now() - cached.ts < RANKED_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  try {
+    const data = await fetchRankedStats(uuid);
+    rankedStatsCache.set(key, { ts: Date.now(), data });
+    return data;
+  } catch (e) {
+    logger.warn(`getRankedStatsByUuid: failed for ${uuid}:`, e);
+    return null;
+  }
+}
+
+function parseTimeToMs(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const parts = text.split(':').map(Number);
+  if (parts.some(Number.isNaN)) return null;
+  if (parts.length === 2) return (parts[0] * 60 + parts[1]) * 1000;
+  if (parts.length === 3) return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+  return null;
+}
+
+function findRunnerNamesInText(text) {
+  const normalizedText = normalizeName(text);
+  const found = new Set();
+
+  for (const runner of runnersCache) {
+    const runnerName = normalizeName(runner.name);
+    if (runnerName && runnerName.length >= 2 && normalizedText.includes(runnerName)) {
+      found.add(runner.name);
+    }
+  }
+
+  for (const run of rsgRunsCache) {
+    const runName = normalizeName(run.name);
+    if (runName && runName.length >= 2 && normalizedText.includes(runName)) {
+      found.add(run.name);
+    }
+  }
+
+  return Array.from(found);
+}
+
+async function getRunnerLiveContext(name) {
+  if (!profileCacheLoaded) {
+    await loadProfileCache();
+  }
+
+  const runner = findRunner(runnersCache, name);
+  const resolvedName = runner?.name || name;
+
+  const rsgRuns = findRuns(rsgRunsCache, resolvedName);
+  const hasRunner = !!runner;
+  const hasRsg = rsgRuns.length > 0;
+
+  if (!hasRunner && !hasRsg) return null;
+
+  const lines = [];
+  lines.push(`Nome: ${resolvedName}`);
+  if (runner?.state) lines.push(`Estado: ${runner.state}`);
+
+  const earnings = getEarnings(resolvedName);
+  if (earnings > 0) lines.push(`Ganhos: R$ ${earnings.toLocaleString('pt-BR')}`);
+
+  if (hasRsg) {
+    const sortedByTime = [...rsgRuns].sort((a, b) => {
+      const ta = parseTimeToMs(a.time) ?? Infinity;
+      const tb = parseTimeToMs(b.time) ?? Infinity;
+      return ta - tb;
+    });
+    const pb = sortedByTime[0];
+    lines.push(`RSG PB: ${pb.time} (${pb.bastion || ''})${pb.comment ? ` — ${pb.comment}` : ''}`);
+  }
+
+  if (runner?.uuid) {
+    const rankedData = await getRankedStatsByUuid(runner.uuid);
+    if (rankedData) {
+      const pb = formatMs(rankedData?.data?.statistics?.total?.bestTime?.ranked);
+      const elo = rankedData?.data?.eloRate;
+      if (pb) lines.push(`Ranked PB: ${pb}`);
+      if (elo !== null && elo !== undefined) lines.push(`Ranked Elo: ${elo}`);
+    }
+  }
+
+  return { name: resolvedName, context: lines.join('\n') };
+}
+
 module.exports = {
   fetchProfile,
   buildProfileEmbed,
@@ -425,4 +519,6 @@ module.exports = {
   loadEarningsCache,
   getEarnings,
   loadProfileCache,
+  getRunnerLiveContext,
+  findRunnerNamesInText,
 };
