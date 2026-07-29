@@ -1,5 +1,5 @@
 ---
-tópico: End completo — one cycle, zero cycle, nodes, alturas de perch
+tópico: End completo — one cycle, nodes, alturas de perch
 autor: você (dark)
 link: https://www.youtube.com/watch?v=D3ZvDKGVb0Y&list=PLv5YwqR_M9-1d7lwwvwnTn3aVeGf6B82y
 ---
