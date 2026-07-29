@@ -39,3 +39,75 @@ tópico: Instalar o MCSR Ranked
 autor: Thomas
 link: https://www.youtube.com/watch?v=sCSKkrymJ7E&t=4s
 ---
+
+---
+tópico: Boat Sprintcrawl
+autor: kayfour
+link: https://www.youtube.com/watch?v=G2AeBEDznUw&t=15s
+---
+
+---
+tópico: "Lodestone route" for Bridge bastion
+autor: RRed
+link: https://www.youtube.com/watch?v=cVOFJ08PqBs
+---
+
+---
+tópico: Damageless oneshot Tutorial
+autor: emnerson
+link: https://youtu.be/R3iebSGQPkU?si=FwOCTr-Ke2BSjRqm
+---
+
+---
+tópico: How to zero cycle
+autor: doogile
+link: https://youtu.be/CSdkCmZ69RI?is=UGcBhY3vUGJxe_ml
+---
+
+---
+tópico: Zero cycle setups
+autor: hasbiwalks
+link: https://youtu.be/eoy8Uj1l-Ps?is=0-cpRu_FOw-M3u6w
+---
+
+---
+tópico: Bastion Stables — rotas
+autor: você (dark)
+link: https://www.youtube.com/watch?v=_veoG7bmgFI&list=PLv5YwqR_M9-21KAyndiyNkGpAenmmocEC
+---
+
+---
+tópico: Bastion Bridge — rotas
+autor: você (dark)
+link: https://www.youtube.com/watch?v=z5htOzojlQU&list=PLv5YwqR_M9-21KAyndiyNkGpAenmmocEC&index=2
+---
+
+---
+tópico: Bastion Treasure — rotas
+autor: você (dark)
+link: https://www.youtube.com/watch?v=-at8BTxwCU4&list=PLv5YwqR_M9-21KAyndiyNkGpAenmmocEC&index=3
+---
+
+---
+tópico: Localização dos baús centrais do Housing
+autor: você (dark)
+link: https://www.youtube.com/watch?v=DTiKkJL0xsM&list=PLv5YwqR_M9-21KAyndiyNkGpAenmmocEC&index=5
+---
+
+---
+tópico: MPK KIT — instalar e usar (treino)
+autor: você (dark)
+link: https://www.youtube.com/watch?v=fHI-wQiLW04&list=PLv5YwqR_M9-0WUbBVurShIDCWpAl-9XPG
+---
+
+---
+tópico: Fazer portais como speedrunner (lava, água, ruined portals)
+autor: Sanszin
+link: https://www.youtube.com/watch?v=jFDoj5IuHvM
+---
+
+---
+tópico: Lootear Jungle Temple
+autor: Zai
+link: https://youtu.be/7KFUdsNpawg
+---

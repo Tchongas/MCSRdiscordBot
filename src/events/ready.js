@@ -10,7 +10,7 @@ module.exports = {
     logger.info(`Logged in as ${client.user.tag}`);
     // Load caches once at startup
     loadEarningsCache().catch(err => logger.error('Failed to load earnings cache:', err));
-    loadProfileCache().catch(err => logger.error('Failed to load profile cache:', err));
+    loadProfileCache(30000).catch(err => logger.error('Failed to load profile cache:', err));
     // Start background jobs (e.g., API watchers)
     startAll(client).catch(err => logger.error('Failed to start jobs:', err));
   },

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { findRunnerNamesInText, getRunnerLiveContext } = require('./profile');
+const { findRunnerNamesInText, getRunnerLiveContext, loadProfileCache, profileCacheLoaded } = require('./profile');
 
 const DEFAULT_FILES = 'src/data/rag/*.md';
 const DEFAULT_MAX_CHARS = 2000;
@@ -179,9 +179,12 @@ function scoreAndRank(blocks, name, prompt, keywordFiles) {
 
 async function buildLiveSections(name, prompt) {
   try {
+    if (!profileCacheLoaded) {
+      await loadProfileCache();
+    }
+
     const text = `${name || ''} ${prompt || ''}`;
     const names = new Set(findRunnerNamesInText(text));
-    if (name) names.add(name);
 
     const seen = new Set();
     const sections = [];

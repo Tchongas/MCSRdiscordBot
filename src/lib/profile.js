@@ -309,7 +309,7 @@ function buildProfileEmbed(profile) {
   return embed;
 }
 
-async function loadProfileCache(timeoutMs = 15000) {
+async function loadProfileCache(timeoutMs = 30000) {
   const results = await Promise.allSettled([
     fetchWithTimeout(ACTIONS.runners, timeoutMs),
     fetchWithTimeout(ACTIONS.rsg, timeoutMs),
@@ -325,7 +325,7 @@ async function loadProfileCache(timeoutMs = 15000) {
   if (results[2].status === 'fulfilled') ssgRunsCache = parseSsgRuns(results[2].value);
   else logger.warn('Failed to cache ssg runs:', results[2].reason?.message || results[2].reason);
 
-  profileCacheLoaded = true;
+  profileCacheLoaded = results[0].status === 'fulfilled' && runnersCache.length > 0;
   logger.info(`Profile cache loaded: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
 }
 
@@ -449,17 +449,39 @@ function findRunnerNamesInText(text) {
   const normalizedText = normalizeName(text);
   const found = new Set();
 
+  const words = Array.from(new Set((normalizedText.match(/[a-z0-9_]+/g) || [])));
+
   for (const runner of runnersCache) {
     const runnerName = normalizeName(runner.name);
-    if (runnerName && runnerName.length >= 2 && normalizedText.includes(runnerName)) {
+    if (!runnerName || runnerName.length < 2) continue;
+
+    if (normalizedText.includes(runnerName)) {
       found.add(runner.name);
+      continue;
+    }
+
+    for (const word of words) {
+      if (word.length >= 3 && runnerName.startsWith(word)) {
+        found.add(runner.name);
+        break;
+      }
     }
   }
 
   for (const run of rsgRunsCache) {
     const runName = normalizeName(run.name);
-    if (runName && runName.length >= 2 && normalizedText.includes(runName)) {
+    if (!runName || runName.length < 2) continue;
+
+    if (normalizedText.includes(runName)) {
       found.add(run.name);
+      continue;
+    }
+
+    for (const word of words) {
+      if (word.length >= 3 && runName.startsWith(word)) {
+        found.add(run.name);
+        break;
+      }
     }
   }
 
@@ -521,4 +543,5 @@ module.exports = {
   loadProfileCache,
   getRunnerLiveContext,
   findRunnerNamesInText,
+  profileCacheLoaded,
 };
