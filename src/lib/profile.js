@@ -195,6 +195,7 @@ async function loadProfileCache(timeoutMs = 30000) {
     ssgRunsCache = Array.isArray(cached.ssgRuns) ? cached.ssgRuns : [];
     profileCacheLoaded = runnersCache.length > 0;
     if (profileCacheLoaded) {
+      writeTopLeaderboardMd();
       logger.info(`Profile cache loaded from disk: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
       return;
     }
@@ -225,6 +226,8 @@ async function loadProfileCache(timeoutMs = 30000) {
       cachedAt: Date.now(),
     });
   }
+
+  writeTopLeaderboardMd();
 
   logger.info(`Profile cache loaded: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
 }
@@ -632,6 +635,42 @@ async function getRunnerLiveContext(name) {
   }
 
   return { name: resolvedName, context: lines.join('\n') };
+}
+
+function writeTopLeaderboardMd() {
+  try {
+    const TOP_LEADERBOARD_FILE = path.resolve(__dirname, '../data/rag/top.md');
+    const limit = 10;
+
+    const rsg = rsgRunsCache
+      .filter(r => r.time && r.verified !== false && r.verified !== 'FALSE')
+      .map(r => ({ ...r, ms: parseTimeToMs(r.time) }))
+      .filter(r => r.ms !== null && r.ms > 0)
+      .sort((a, b) => a.ms - b.ms)
+      .slice(0, limit);
+
+    const ssg = ssgRunsCache
+      .filter(r => r.time && r.verified !== false && r.verified !== 'FALSE')
+      .map(r => ({ ...r, ms: parseTimeToMs(r.time) }))
+      .filter(r => r.ms !== null && r.ms > 0)
+      .sort((a, b) => a.ms - b.ms)
+      .slice(0, limit);
+
+    let md = 'Top runs do leaderboard (cache local):\n\n';
+    md += 'RSG 1.16:\n';
+    rsg.forEach((r, i) => {
+      md += `${i + 1}. ${r.name}: ${r.time}${r.bastion ? ` (${r.bastion})` : ''}\n`;
+    });
+
+    md += '\nSSG 1.16:\n';
+    ssg.forEach((r, i) => {
+      md += `${i + 1}. ${r.name}: ${r.time}${r.seedName ? ` (${r.seedName})` : ''}\n`;
+    });
+
+    fs.writeFileSync(TOP_LEADERBOARD_FILE, md, 'utf-8');
+  } catch (e) {
+    logger.warn('Failed to write top leaderboard RAG file:', e);
+  }
 }
 
 function isProfileCacheLoaded() {

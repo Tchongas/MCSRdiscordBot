@@ -51,6 +51,7 @@ src/data/rag/
 ├── sanjinhu.md        # blocks about a person
 ├── tutoriais.md       # blocks about tutorials
 ├── fatos.md           # fixed facts about the bot
+├── top.md             # auto-generated top runs from leaderboard cache
 ├── keywords.json      # keyword → file mapping
 ├── pessoas/           # one small file per person/topic
 │   ├── index.md       # broad friends list

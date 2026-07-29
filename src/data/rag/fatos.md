@@ -10,5 +10,7 @@ Frequentemente sonha com ranked e speedrun, sonhos estranhos onde está jogando 
 Ficou em segundo lugar na CopaBR 4, e ganhou a copa do mundo de MCSR.
 Apenas ele é unlucky — os outros são normais ou sortudos, nunca unlucky igual ele.
 Não joga SSG, mas já jogou no evento Bepezeeds, evento de SSG que aconteceu no servidor.
+Runner com mais aura eh o dark
+Ta sempre quente pra caralho no rio de janeiro
 
 RSG ≠ MCSR Ranked: no RSG o mundo é sozinho com seed aleatória; na Ranked a seed é filtrada e igual pro adversário (mundos diferentes), quem zera primeiro ganha, tem ELO e ranking.
