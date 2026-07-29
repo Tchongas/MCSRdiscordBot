@@ -16,3 +16,6 @@ Thumbs.db
 .vscode/
 .idea/
 MCSRdiscordBot.zip
+
+# Runtime cache
+src/data/cache/

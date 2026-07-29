@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { EmbedBuilder } = require('discord.js');
 const logger = require('./logger');
 
@@ -14,6 +16,13 @@ const MCSRBR_QUEUE_URL = 'mcsrbr.queuefish.ing';
 const GOOGLE_RUNS_API_BASE = process.env.GOOGLE_RUNS_API_URL || 'https://script.google.com/macros/s/AKfycbztdxz4Cm5x03Xs_1mdX9Uxkf4g51FqohS-SqoAn28CPuvMAAJgdJsYhstp57PogdY4/exec';
 const RANKED_API_BASE = 'https://api.mcsrranked.com/users';
 
+const CACHE_DIR = path.resolve(__dirname, '../../data/cache');
+const PROFILE_CACHE_FILE = path.join(CACHE_DIR, 'profile_cache.json');
+const RANKED_CACHE_DIR = path.join(CACHE_DIR, 'ranked');
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const PROFILE_CACHE_TTL_MS = Number(process.env.PROFILE_CACHE_TTL_MS) || ONE_DAY_MS;
+const RANKED_CACHE_TTL_MS = Number(process.env.RANKED_CACHE_TTL_MS) || ONE_DAY_MS;
+
 const ACTIONS = {
   runners: 'getrunners',
   rsg: 'getrsg116',
@@ -28,7 +37,6 @@ let rsgRunsCache = [];
 let ssgRunsCache = [];
 let profileCacheLoaded = false;
 
-const RANKED_CACHE_TTL_MS = Number(process.env.RANKED_CACHE_TTL_MS) || 5 * 60 * 1000;
 const rankedStatsCache = new Map();
 
 function buildApiUrl(action) {
@@ -136,15 +144,115 @@ function calculateEarnings(tournaments) {
   return map;
 }
 
+function ensureCacheDir() {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(RANKED_CACHE_DIR)) {
+      fs.mkdirSync(RANKED_CACHE_DIR, { recursive: true });
+    }
+  } catch (e) {
+    logger.warn('Failed to create cache directory:', e);
+  }
+}
+
+function readJsonFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (e) {
+    logger.warn(`Failed to read cache file ${filePath}:`, e);
+    return null;
+  }
+}
+
+function writeJsonFile(filePath, data) {
+  try {
+    ensureCacheDir();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    logger.warn(`Failed to write cache file ${filePath}:`, e);
+  }
+}
+
+function isCacheFresh(filePath, ttlMs) {
+  try {
+    if (!fs.existsSync(filePath)) return false;
+    const stats = fs.statSync(filePath);
+    return Date.now() - stats.mtimeMs < ttlMs;
+  } catch {
+    return false;
+  }
+}
+
+async function loadProfileCache(timeoutMs = 30000) {
+  const cached = readJsonFile(PROFILE_CACHE_FILE);
+  if (cached && isCacheFresh(PROFILE_CACHE_FILE, PROFILE_CACHE_TTL_MS)) {
+    runnersCache = Array.isArray(cached.runners) ? cached.runners : [];
+    rsgRunsCache = Array.isArray(cached.rsgRuns) ? cached.rsgRuns : [];
+    ssgRunsCache = Array.isArray(cached.ssgRuns) ? cached.ssgRuns : [];
+    profileCacheLoaded = runnersCache.length > 0;
+    if (profileCacheLoaded) {
+      logger.info(`Profile cache loaded from disk: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
+      return;
+    }
+  }
+
+  const results = await Promise.allSettled([
+    fetchWithTimeout(ACTIONS.runners, timeoutMs),
+    fetchWithTimeout(ACTIONS.rsg, timeoutMs),
+    fetchWithTimeout(ACTIONS.ssg, timeoutMs),
+  ]);
+
+  if (results[0].status === 'fulfilled') runnersCache = parseRunners(results[0].value);
+  else logger.warn('Failed to cache runners:', results[0].reason?.message || results[0].reason);
+
+  if (results[1].status === 'fulfilled') rsgRunsCache = parseRsgRuns(results[1].value);
+  else logger.warn('Failed to cache rsg runs:', results[1].reason?.message || results[1].reason);
+
+  if (results[2].status === 'fulfilled') ssgRunsCache = parseSsgRuns(results[2].value);
+  else logger.warn('Failed to cache ssg runs:', results[2].reason?.message || results[2].reason);
+
+  profileCacheLoaded = runnersCache.length > 0;
+
+  if (profileCacheLoaded || cached) {
+    writeJsonFile(PROFILE_CACHE_FILE, {
+      runners: runnersCache,
+      rsgRuns: rsgRunsCache,
+      ssgRuns: ssgRunsCache,
+      cachedAt: Date.now(),
+    });
+  }
+
+  logger.info(`Profile cache loaded: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
+}
+
+const EARNINGS_CACHE_FILE = path.join(CACHE_DIR, 'earnings_cache.json');
+const EARNINGS_CACHE_TTL_MS = Number(process.env.EARNINGS_CACHE_TTL_MS) || ONE_DAY_MS;
+
 async function loadEarningsCache(timeoutMs = 15000) {
+  const cached = readJsonFile(EARNINGS_CACHE_FILE);
+  if (cached && isCacheFresh(EARNINGS_CACHE_FILE, EARNINGS_CACHE_TTL_MS) && Array.isArray(cached.tournaments)) {
+    earningsCache = calculateEarnings(cached.tournaments);
+    logger.info(`Earnings cache loaded from disk for ${earningsCache.size} players`);
+    return;
+  }
+
   try {
     const data = await fetchWithTimeout(ACTIONS.earnings, timeoutMs);
     const tournaments = unwrapArray(data, ['tournaments', 'data', 'results', 'items']);
+    writeJsonFile(EARNINGS_CACHE_FILE, { tournaments, cachedAt: Date.now() });
     earningsCache = calculateEarnings(tournaments);
     logger.info(`Earnings cache loaded for ${earningsCache.size} players`);
   } catch (e) {
     logger.error('Failed to load earnings cache:', e);
-    earningsCache = new Map();
+    if (cached && Array.isArray(cached.tournaments)) {
+      earningsCache = calculateEarnings(cached.tournaments);
+    } else {
+      earningsCache = new Map();
+    }
   }
 }
 
@@ -309,26 +417,6 @@ function buildProfileEmbed(profile) {
   return embed;
 }
 
-async function loadProfileCache(timeoutMs = 30000) {
-  const results = await Promise.allSettled([
-    fetchWithTimeout(ACTIONS.runners, timeoutMs),
-    fetchWithTimeout(ACTIONS.rsg, timeoutMs),
-    fetchWithTimeout(ACTIONS.ssg, timeoutMs),
-  ]);
-
-  if (results[0].status === 'fulfilled') runnersCache = parseRunners(results[0].value);
-  else logger.warn('Failed to cache runners:', results[0].reason?.message || results[0].reason);
-
-  if (results[1].status === 'fulfilled') rsgRunsCache = parseRsgRuns(results[1].value);
-  else logger.warn('Failed to cache rsg runs:', results[1].reason?.message || results[1].reason);
-
-  if (results[2].status === 'fulfilled') ssgRunsCache = parseSsgRuns(results[2].value);
-  else logger.warn('Failed to cache ssg runs:', results[2].reason?.message || results[2].reason);
-
-  profileCacheLoaded = results[0].status === 'fulfilled' && runnersCache.length > 0;
-  logger.info(`Profile cache loaded: ${runnersCache.length} runners, ${rsgRunsCache.length} rsg runs, ${ssgRunsCache.length} ssg runs`);
-}
-
 async function fetchWithTimeout(action, timeoutMs) {
   const url = buildApiUrl(action);
   logger.info(`fetchWithTimeout: fetching ${url} (timeout ${timeoutMs}ms)`);
@@ -419,18 +507,32 @@ async function fetchRankedStats(uuid, timeoutMs = 10000) {
   }
 }
 
+function rankedCachePath(key) {
+  return path.join(RANKED_CACHE_DIR, `${key}.json`);
+}
+
 async function getRankedStatsByUuid(uuid) {
   const key = String(uuid).replace(/-/g, '');
-  const cached = rankedStatsCache.get(key);
-  if (cached && Date.now() - cached.ts < RANKED_CACHE_TTL_MS) {
-    return cached.data;
+  const filePath = rankedCachePath(key);
+
+  if (isCacheFresh(filePath, RANKED_CACHE_TTL_MS)) {
+    const cached = readJsonFile(filePath);
+    if (cached && cached.data) {
+      rankedStatsCache.set(key, { ts: cached.ts || Date.now(), data: cached.data });
+      return cached.data;
+    }
   }
+
   try {
     const data = await fetchRankedStats(uuid);
-    rankedStatsCache.set(key, { ts: Date.now(), data });
+    const ts = Date.now();
+    rankedStatsCache.set(key, { ts, data });
+    writeJsonFile(filePath, { ts, data });
     return data;
   } catch (e) {
     logger.warn(`getRankedStatsByUuid: failed for ${uuid}:`, e);
+    const stale = readJsonFile(filePath);
+    if (stale && stale.data) return stale.data;
     return null;
   }
 }
@@ -532,6 +634,10 @@ async function getRunnerLiveContext(name) {
   return { name: resolvedName, context: lines.join('\n') };
 }
 
+function isProfileCacheLoaded() {
+  return profileCacheLoaded;
+}
+
 module.exports = {
   fetchProfile,
   buildProfileEmbed,
@@ -544,4 +650,5 @@ module.exports = {
   getRunnerLiveContext,
   findRunnerNamesInText,
   profileCacheLoaded,
+  isProfileCacheLoaded,
 };
