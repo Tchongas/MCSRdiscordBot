@@ -1,0 +1,1 @@
+Blind: portal no nether sem calcular, cai em local aleatório do overworld. Feita com as primeiras 10 obsidians que se pega no bastion, geralmente feito no spawner da fortress, enquanto mata as blazes.

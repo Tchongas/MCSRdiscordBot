@@ -1,19 +1,52 @@
 {
-  "tutorial": "tutoriais.md",
-  "tutoriais": "tutoriais.md",
-  "guia": "tutoriais.md",
-  "guias": "tutoriais.md",
-  "video": "tutoriais.md",
-  "videos": "tutoriais.md",
-  "youtube": "tutoriais.md",
-  "como faz": "tutoriais.md",
-  "como fazer": "tutoriais.md",
-  "como phas": "tutoriais.md",
-  "comophas": "tutoriais.md",
+  "tutorial, tutoriais, guia, guias, video, videos, youtube, como faz, como fazer, como phas, comophas": "tutoriais.md",
+
+  "sanjinhu, sanji, sender:sanjinhu": "sanjinhu.md",
+
+  "amigos, pessoas, floaddy, shy, booster, thomas, hungi, sans, nina, zai, bepeze, darvz, caiot, lucas, kija, xade, night, feinberg, edcr": "pessoas/index.md",
 
 
-  "sender:sanjinhu": "sanjinhu.md",
-  "sanjinhu": "sanjinhu.md",
-  "sanji": "sanjinhu.md"
+  "epik": "pessoas/epik.md",
+  "brtt": "pessoas/brtt.md",
+  "xande": "pessoas/xande.md",
+  "bocao, geladeiras": "pessoas/bocao.md",
+  "ferrer": "pessoas/ferrer.md",
+  "lowkey": "pessoas/lowkey.md",
+  "dark, darkk, darkk575": "pessoas/dark.md",
 
+
+  "fatos, pb, copabr, copa do mundo, netherite, elo, osu, queuefishing, fishdex, unlucky": "fatos.md",
+
+
+  "strats, estratégias, estrategias, técnicas, tecnicas, rotas, run, sub, sub10, subdas, sub9, ranked, choke, unlucky": "strats/index.md",
+
+  "blind": "strats/blind.md",
+  "bastion": "strats/bastion.md",
+  "fortress": "strats/fortress.md",
+  "ninjabrain": "strats/ninjabrain.md",
+  "nav": "strats/nav.md",
+  "bt, buried treasure": "strats/buried_treasure.md",
+  "stray": "strats/stray.md",
+  "woodlight": "strats/woodlight.md",
+  "zero cycle, one cycle": "strats/zero_cycle.md",
+  "pace": "strats/pace.md",
+  "consistency": "strats/consistency.md",
+  "seed inject": "strats/seed_inject.md",
+  "choke": "strats/choke.md",
+  "eye measure": "strats/eye_measure.md",
+  "boateye": "strats/boateye.md",
+  "toolscreen": "strats/toolscreen.md",
+  "waywall": "strats/waywall.md",
+  "searchcraft": "strats/searchcraft.md",
+  "seedqueue, seed queue": "strats/seedqueue.md",
+  "tab space craft, advanced craft": "strats/advanced_craft.md",
+  "glowdar": "strats/glowdar.md",
+  "piedar": "strats/piedar.md",
+  "blazebed, blazetnt": "strats/blazebed.md",
+  "ranks": "strats/ranks.md",
+  "second portal": "strats/second_portal.md",
+  "fastion": "strats/fastion.md",
+  "btrl": "strats/btrl.md",
+  "ssg": "strats/ssg.md",
+  "overworld, vila, shipwreck, ruined portal": "strats/overworld.md"
 }

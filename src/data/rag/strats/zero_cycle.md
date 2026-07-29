@@ -1,0 +1,1 @@
+Zero cycle / One cycle: estratégias de matar o dragão. Zero cycle é mais rápida e arriscada, usada pelos top runners. One cycle é a estratégia mais velha e mais segura. Alguns zero cycles usam setups como y90, y100, 2+2, extended, front back buried — são diferentes setups e alturas de zerocycle.

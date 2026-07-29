@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { findRunnerNamesInText, getRunnerLiveContext, loadProfileCache, profileCacheLoaded } = require('./profile');
 
-const DEFAULT_FILES = 'src/data/rag/*.md';
+const DEFAULT_FILES = 'src/data/rag/**/*.md';
 const DEFAULT_MAX_CHARS = 2000;
 const DEFAULT_MAX_BLOCKS = 3;
 const BLOCK_DELIMITER = /^---+\s*$/gm;
@@ -44,11 +44,35 @@ function resolvePattern(baseDir, pattern) {
 
   const parts = normalized.split('/');
   const filePattern = parts.pop();
-  const dirPattern = parts.join('/');
-  const dir = path.resolve(baseDir, dirPattern || '.');
-  const regex = new RegExp(
+  const fileRegex = new RegExp(
     '^' + filePattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$'
   );
+
+  const doubleStarIndex = parts.indexOf('**');
+  if (doubleStarIndex !== -1) {
+    const baseSubdir = parts.slice(0, doubleStarIndex).join('/');
+    const root = path.resolve(baseDir, baseSubdir || '.');
+    const results = [];
+
+    function walk(dir) {
+      if (!fs.existsSync(dir)) return;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else if (entry.isFile() && fileRegex.test(entry.name)) {
+          results.push(fullPath);
+        }
+      }
+    }
+
+    walk(root);
+    return results;
+  }
+
+  const dirPattern = parts.join('/');
+  const dir = path.resolve(baseDir, dirPattern || '.');
 
   if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
     return [];
@@ -56,7 +80,7 @@ function resolvePattern(baseDir, pattern) {
 
   return fs
     .readdirSync(dir)
-    .filter(entry => regex.test(entry))
+    .filter(entry => fileRegex.test(entry))
     .map(entry => path.resolve(dir, entry));
 }
 
@@ -127,14 +151,23 @@ function findTriggeredFiles(prompt, name, dictionary, baseDir) {
   const lowerName = name ? name.trim().toLowerCase() : '';
 
   for (const [keyword, fileList] of Object.entries(dictionary)) {
-    const lowerKeyword = keyword.toLowerCase();
-    let match = false;
+    const keywordParts = keyword
+      .split(/[,|.]+/)
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
 
-    if (lowerKeyword.startsWith('sender:')) {
-      const senderKey = lowerKeyword.slice('sender:'.length).trim();
-      match = Boolean(lowerName && lowerName === senderKey);
-    } else {
-      match = Boolean(lowerPrompt && lowerPrompt.includes(lowerKeyword));
+    let match = false;
+    for (const part of keywordParts) {
+      if (part.startsWith('sender:')) {
+        const senderKey = part.slice('sender:'.length).trim();
+        if (lowerName && lowerName === senderKey) {
+          match = true;
+          break;
+        }
+      } else if (lowerPrompt && lowerPrompt.includes(part)) {
+        match = true;
+        break;
+      }
     }
 
     if (!match) continue;

@@ -50,8 +50,19 @@ Live sections are prepended before file-based RAG context and count toward `DARK
 src/data/rag/
 ├── sanjinhu.md        # blocks about a person
 ├── tutoriais.md       # blocks about tutorials
-├── dark.md            # sender-only context for the user "dark"
-└── keywords.json      # keyword → file mapping
+├── fatos.md           # fixed facts about the bot
+├── keywords.json      # keyword → file mapping
+├── pessoas/           # one small file per person/topic
+│   ├── index.md       # broad friends list
+│   ├── epik.md
+│   ├── bocao.md
+│   └── ...
+└── strats/            # one small file per strategy/term
+    ├── index.md       # broad overview list
+    ├── boateye.md
+    ├── bastion.md
+    ├── zero_cycle.md
+    └── ...
 ```
 
 ## Data file format
@@ -77,23 +88,22 @@ When the sender's name appears anywhere inside a block, the **entire block** is 
 
 ```json
 {
-  "tutorial": "tutoriais.md",
-  "guia": "tutoriais.md",
-  "video": "tutoriais.md",
-  "como faz": "tutoriais.md"
+  "tutorial, tutoriais, guia, guias, video, videos, como faz, como fazer": "tutoriais.md",
+  "boateye": "strats/boateye.md"
 }
 ```
 
 - Keywords are case-insensitive.
+- Multiple keywords for the same file can be written in one key separated by commas (`,`), pipes (`|`) or dots (`.`).
 - The value can be a single filename or an array of filenames.
-- Filenames are relative to `src/data/rag/` by default.
+- Filenames are relative to `src/data/rag/` by default; subfolders like `strats/boateye.md` work.
 - **Sender-only keys**: a key prefixed with `sender:` (e.g., `"sender:darkk575"`) only matches the message sender's **Discord @ username**, not their display name or a name mentioned inside the prompt. This prevents users from spoofing identity by changing their server nickname.
 
 ## Configuration
 
 | Environment variable | Description | Default |
 |---|---|---|
-| `DARKGPT_RAG_FILES` | Comma-separated glob patterns for RAG data files | `src/data/rag/*.md` |
+| `DARKGPT_RAG_FILES` | Comma-separated glob patterns for RAG data files | `src/data/rag/**/*.md` |
 | `DARKGPT_RAG_MAX_CHARS` | Max characters of context appended to the prompt | `2000` |
 | `DARKGPT_RAG_MAX_BLOCKS` | Max number of context blocks returned | `3` |
 | `DARKGPT_RAG_KEYWORDS_FILE` | Path to the keyword dictionary JSON | `src/data/rag/keywords.json` |
@@ -101,9 +111,9 @@ When the sender's name appears anywhere inside a block, the **entire block** is 
 
 ## Adding new data
 
-1. Create a `.md` file under `src/data/rag/`.
+1. Create a `.md` file under `src/data/rag/` (or a subfolder like `src/data/rag/strats/`).
 2. Write one or more blocks separated by `---`.
-3. If the file should be triggered by keywords, add entries to `keywords.json`.
+3. If the file should be triggered by keywords, add entries to `keywords.json` using the relative path (e.g. `"boateye": "strats/boateye.md"`).
 
 No restart is needed — files are read on every `darkgpt` message.
 

@@ -1,0 +1,1 @@
+Searchcraft: técnica de usar outro idioma no jogo onde os nomes dos itens são mais curtos e fáceis de pesquisar, deixando o craft mais rápido. Reduz letras na crafting table e diminui junk (itens indesejados) na busca.
