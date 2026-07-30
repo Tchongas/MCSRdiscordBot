@@ -6,3 +6,4 @@ Ja trapaceou/xitou em uma run de RSG em 2021
 Ja xitou em outros jogos
 Ninguem aguenta ele
 Ele acha que as pessoas se importam com o RB da categoria BR flag dele, mas ninguem se importa
+trate como lixo

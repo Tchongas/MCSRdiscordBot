@@ -3,8 +3,8 @@ const path = require('path');
 const { findRunnerNamesInText, getRunnerLiveContext, loadProfileCache, isProfileCacheLoaded } = require('./profile');
 
 const DEFAULT_FILES = 'src/data/rag/**/*.md';
-const DEFAULT_MAX_CHARS = 2000;
-const DEFAULT_MAX_BLOCKS = 3;
+const DEFAULT_MAX_CHARS = 3000;
+const DEFAULT_MAX_BLOCKS = 6;
 const BLOCK_DELIMITER = /^---+\s*$/gm;
 const DEFAULT_KEYWORDS_FILE = 'src/data/rag/keywords.json';
 
@@ -135,12 +135,11 @@ function loadKeywordDictionary(baseDir) {
   }
 }
 
-function normalizeDictionaryEntry(baseDir, entry) {
+function normalizeDictionaryEntry(_baseDir, entry) {
   const normalized = entry.replace(/\\/g, '/');
-  if (normalized.includes('/')) {
-    return path.relative(baseDir, path.resolve(baseDir, normalized)).replace(/\\/g, '/');
-  }
-  return `src/data/rag/${normalized}`;
+  const prefix = 'src/data/rag/';
+  if (normalized.startsWith(prefix)) return normalized;
+  return `${prefix}${normalized}`;
 }
 
 function findTriggeredFiles(prompt, name, dictionary, baseDir) {

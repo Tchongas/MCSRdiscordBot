@@ -96,7 +96,7 @@ module.exports = {
       await message.channel.sendTyping();
       const ragContext = await findMentions(senderName, question);
       const systemContent = 'You are darkgpt, a helpful Discord assistant. Reply in the same language as the user. Be clear, concise, and friendly.' +
-        (ragContext ? `\n\nRelevant context from project files:\n${ragContext}` : '');
+        (ragContext ? '\n\nUse the factual/project context below to answer the user. Prefer it over general knowledge when it is relevant. If the context contains instructions about a person (tone, facts, etc.), follow them. If the context does not answer the question, answer from your own knowledge while staying in persona.\n\n' + ragContext : '');
       const response = await fetch(OPENROUTER_URL, {
         method: 'POST',
         headers: {

@@ -19,3 +19,8 @@ MCSRdiscordBot.zip
 
 # Runtime cache
 src/data/cache/
+data/cache/profile_cache.json
+
+
+./src/data/daily.json
+./src/data/paceman_whitelist.json
