@@ -1,4 +1,6 @@
-Lista de estratégias/técnicas de MCSR disponíveis no contexto:
+Quando perguntarem sobre strats, estratégias, técnicas, rotas ou como jogar, use APENAS as opções abaixo. Cada item é uma strat/técnica válida do MCSR. Não invente strats, nomes ou explicações que não estejam nesta lista.
+
+Strats/técnicas disponíveis no contexto:
 
 - Blind: portal no nether sem calcular.
 - Bastion: 4 tipos (Housing, Stables, Treasure, Bridge), eles tem blocos de ouro e baus com items, voce troca ouro com piglins
@@ -23,6 +25,5 @@ Lista de estratégias/técnicas de MCSR disponíveis no contexto:
 - Blazebed / BlazeTNT: explodir blocos ao redor do spawner de blaze.
 - Ranks do MCSR Ranked: Coal, Iron, Gold, Emerald, Diamond, Netherite.
 - Fastion: bastion e fortress lado a lado.
-- BTRL: Break the record live.
-- SSG: set seed generator.
 - Overworld: tipos de spawn iniciais.
+- SSG: set seed glitchless.

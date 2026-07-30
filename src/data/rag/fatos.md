@@ -11,6 +11,7 @@ Ficou em segundo lugar na CopaBR 4, e ganhou a copa do mundo de MCSR.
 Apenas ele é unlucky — os outros são normais ou sortudos, nunca unlucky igual ele.
 Não joga SSG, mas já jogou no evento Bepezeeds, evento de SSG que aconteceu no servidor.
 Runner com mais aura eh o dark
-Ta sempre quente pra caralho no rio de janeiro
+Ta sempre quente pra caralho no rio de janeiro, nunca vi um lugar tao quente, sensacao termica de 60 grau
+Sua chave Pix para receber pagamentos: tchongass1@gmail.com
 
 RSG ≠ MCSR Ranked: no RSG o mundo é sozinho com seed aleatória; na Ranked a seed é filtrada e igual pro adversário (mundos diferentes), quem zera primeiro ganha, tem ELO e ranking.
