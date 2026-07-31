@@ -59,6 +59,20 @@ function parseDate(value) {
   return date;
 }
 
+function toDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (!value) return null;
+  const d = new Date(value);
+  if (!Number.isNaN(d.getTime())) return d;
+  return null;
+}
+
+function isValidUuid(value) {
+  if (!value || typeof value !== 'string') return false;
+  const clean = String(value).replace(/-/g, '');
+  return /^[0-9a-fA-F]{32}$/.test(clean);
+}
+
 function unwrapArray(data, keys) {
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     for (const key of keys) {
@@ -78,7 +92,7 @@ function parseRunners(data) {
       name: row[0],
       state: row[1],
       color: row[2],
-      uuid: row[3],
+      uuid: isValidUuid(row[3]) ? row[3] : null,
     }));
 }
 
@@ -288,7 +302,7 @@ function colorToHex(color) {
 }
 
 function formatDateShort(parsedDate, rawDate) {
-  const date = parsedDate || parseDate(rawDate);
+  const date = toDate(parsedDate) || parseDate(rawDate);
   if (!date) return rawDate || '';
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -343,8 +357,8 @@ function formatRunLine(run) {
 function formatRunsSection(runs, title, maxRuns = 5) {
   if (!Array.isArray(runs) || runs.length === 0) return null;
   const sorted = [...runs].sort((a, b) => {
-    const aDate = a.parsedDate ? a.parsedDate.getTime() : 0;
-    const bDate = b.parsedDate ? b.parsedDate.getTime() : 0;
+    const aDate = toDate(a.parsedDate)?.getTime() || 0;
+    const bDate = toDate(b.parsedDate)?.getTime() || 0;
     return bDate - aDate;
   });
   const shown = sorted.slice(0, maxRuns);
@@ -374,12 +388,12 @@ function buildProfileEmbed(profile) {
     .setColor(color)
     .setTitle(`${LOGO_EMOJI} Perfil de ${profile.name} ${LOGO_EMOJI}`);
 
-  if (profile.uuid) {
+  if (isValidUuid(profile.uuid)) {
     const headUuid = String(profile.uuid).replace(/-/g, '');
     embed.setThumbnail(`https://mc-heads.net/head/${headUuid}`);
   }
 
-  const rankedUrl = profile.uuid ? `https://mcsrranked.com/stats/${profile.uuid}` : null;
+  const rankedUrl = isValidUuid(profile.uuid) ? `https://mcsrranked.com/stats/${profile.uuid}` : null;
   const rankedField = rankedUrl
     ? { name: `${RANKED_EMOJI} Ranked:`, value: `\n[Perfil](${rankedUrl})`, inline: true }
     : null;
@@ -466,7 +480,7 @@ async function fetchProfile(name) {
 
   let rankedPb = null;
   let rankedElo = null;
-  if (runner?.uuid) {
+  if (isValidUuid(runner?.uuid)) {
     try {
       const rankedData = await fetchRankedStats(runner.uuid);
       rankedPb = formatMs(rankedData?.data?.statistics?.total?.bestTime?.ranked);
@@ -480,6 +494,9 @@ async function fetchProfile(name) {
 }
 
 async function fetchRankedStats(uuid, timeoutMs = 10000) {
+  if (!isValidUuid(uuid)) {
+    throw new Error(`UUID inválido para ranked stats: ${uuid}`);
+  }
   const cleanUuid = String(uuid).replace(/-/g, '');
   const url = `${RANKED_API_BASE}/${cleanUuid}`;
   logger.info(`fetchRankedStats: fetching ${url} (timeout ${timeoutMs}ms)`);
@@ -515,6 +532,10 @@ function rankedCachePath(key) {
 }
 
 async function getRankedStatsByUuid(uuid) {
+  if (!isValidUuid(uuid)) {
+    logger.warn(`getRankedStatsByUuid: invalid uuid ${uuid}`);
+    return null;
+  }
   const key = String(uuid).replace(/-/g, '');
   const filePath = rankedCachePath(key);
 
@@ -624,7 +645,7 @@ async function getRunnerLiveContext(name) {
     lines.push(`RSG PB: ${pb.time} (${pb.bastion || ''})${pb.comment ? ` — ${pb.comment}` : ''}`);
   }
 
-  if (runner?.uuid) {
+  if (isValidUuid(runner?.uuid)) {
     const rankedData = await getRankedStatsByUuid(runner.uuid);
     if (rankedData) {
       const pb = formatMs(rankedData?.data?.statistics?.total?.bestTime?.ranked);
