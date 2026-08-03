@@ -24,6 +24,9 @@ data/cache/profile_cache.json
 # Message logs
 src/data/logs/
 
+# Event signup data
+src/data/events/
+
 
 ./src/data/daily.json
 ./src/data/paceman_whitelist.json

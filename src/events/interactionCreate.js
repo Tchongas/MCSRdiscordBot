@@ -1,5 +1,6 @@
 const { Events, MessageFlags } = require('discord.js');
 const daily = require('../lib/daily');
+const eventSignups = require('../lib/eventSignups');
 const logger = require('../lib/logger');
 const { QUESTIONS } = require('../lib/dailyQuestions');
 
@@ -47,6 +48,25 @@ module.exports = {
           return interaction.update({ content: '❌ Resposta incorreta! Tente novamente amanhã.', components: [] });
         }
       }
+
+      if (id === eventSignups.BUTTON_SIGNUP) {
+        try {
+          return await eventSignups.handleSignupButton(interaction);
+        } catch (error) {
+          logger.error('Event signup button error:', error);
+        }
+        return;
+      }
+
+      if (id === eventSignups.BUTTON_CANCEL) {
+        try {
+          return await eventSignups.handleCancelButton(interaction);
+        } catch (error) {
+          logger.error('Event cancel button error:', error);
+        }
+        return;
+      }
+
       return; // other buttons ignored
     }
 
@@ -75,6 +95,20 @@ module.exports = {
         await command.autocomplete(interaction);
       } catch (error) {
         logger.error('Error running autocomplete:', error);
+      }
+      return;
+    }
+
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId === eventSignups.MODAL_SIGNUP) {
+        try {
+          return await eventSignups.handleModalSubmit(interaction);
+        } catch (error) {
+          logger.error('Event signup modal error:', error);
+          if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: 'Erro ao processar inscrição.', flags: MessageFlags.Ephemeral }).catch(() => {});
+          }
+        }
       }
       return;
     }
