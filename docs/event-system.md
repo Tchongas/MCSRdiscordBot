@@ -18,7 +18,7 @@ This bot supports server events where users sign up through a button + modal flo
 /eventconfig campo adicionar nome:torneio_verao id:experiencia label:"Experiência com PvP" style:paragraph obrigatorio:false maxlength:500
 ```
 
-3. Post the event:
+3. Post the event (type a few letters and Discord will autocomplete existing events):
 
 ```txt
 /evento nome:torneio_verao
@@ -35,16 +35,67 @@ Admin-only.
 | Subcommand | Purpose |
 |------------|---------|
 | `criar` | Creates a new event config. |
-| `editar` | Edits title, description, color, or image. |
+| `editar` | Edits title, description, color, image, or link button. |
 | `info` | Shows current config and fields. |
 | `deletar` | Removes the event and all signups. |
 | `campo adicionar` | Adds a question/field to the sign-up modal. |
 | `campo remover` | Removes a field. |
 | `campo editar` | Edits an existing field. |
 
+All `nome` options support autocomplete — start typing and pick from existing events.
+
 ### `/evento`
 
 Posts the event embed. Only admins and the hardcoded allowed user can use it.
+
+## Adding or changing an image
+
+The event embed supports one big image via the `imagem` option.
+
+**When creating the event:**
+
+```txt
+/eventconfig criar nome:torneio_verao titulo:"🏆 Torneio de Verão" descricao:"..." imagem:https://i.imgur.com/example.png
+```
+
+**After creation:**
+
+```txt
+/eventconfig editar nome:torneio_verao imagem:https://i.imgur.com/newimage.png
+```
+
+**To remove the image:**
+
+```txt
+/eventconfig editar nome:torneio_verao imagem:remover
+```
+
+Rules:
+
+- The value must be a direct image URL (Discord will render it).
+- The bot does **not** upload files — it only accepts URLs.
+- Any tracked posted messages are updated automatically when you edit the image.
+
+## Adding a link button
+
+You can add a third blue button between **INSCREVA-SE** and **Cancelar inscrição**.
+
+```txt
+/eventconfig editar nome:torneio_verao link_label:"Regras do torneio" link_url:https://example.com/regras
+```
+
+Remove it later with:
+
+```txt
+/eventconfig editar nome:torneio_verao link_label:remover
+```
+
+The link button is a standard Discord URL button — it opens the URL when clicked.
+
+## Button notes
+
+- Discord buttons in the same action row share the row width equally, so the **INSCREVA-SE**, optional link, and **Cancelar inscrição** buttons all have the same width and together span the full message/embed width.
+- The event embed no longer has a timestamp footer.
 
 ## Field configuration
 

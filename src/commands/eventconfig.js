@@ -5,6 +5,7 @@ const {
   saveEventConfig,
   deleteEventConfig,
   isEventPostable,
+  listEventSlugs,
   updatePostedMessages,
   buildEventEmbed,
   buildButtonRow,
@@ -68,12 +69,20 @@ function normalizeField(field, index) {
   };
 }
 
+function isValidUrl(value) {
+  if (!value) return false;
+  return /^https?:\/\//i.test(value);
+}
+
 function configInfoEmbed(slug, config) {
   const fieldsText = config.fields
     .map((f, i) => `${i + 1}. \`${f.id}\` — ${f.label} (${f.style}${f.required ? ', obrigatório' : ''})`)
     .join('\n') || 'Nenhum campo configurado.';
 
   const postable = isEventPostable(config) ? 'Sim' : 'Não';
+  const linkText = config.linkButton
+    ? `[${config.linkButton.label}](${config.linkButton.url})`
+    : 'nenhum';
 
   return new EmbedBuilder()
     .setTitle(`Config do evento: ${config.title || slug}`)
@@ -84,6 +93,7 @@ function configInfoEmbed(slug, config) {
       { name: 'Pronto para postar', value: postable, inline: true },
       { name: 'Cor', value: config.color || 'padrão', inline: true },
       { name: 'Imagem', value: config.image || 'nenhuma', inline: true },
+      { name: 'Link extra', value: linkText, inline: true },
       { name: 'Campos', value: fieldsText, inline: false }
     );
 }
@@ -96,31 +106,35 @@ module.exports = {
     .addSubcommand(sub => sub
       .setName('criar')
       .setDescription('Cria um novo evento')
-      .addStringOption(opt => opt.setName('nome').setDescription('Nome curto do evento').setRequired(true))
+      .addStringOption(opt => opt.setName('nome').setDescription('Nome curto do evento').setRequired(true).setAutocomplete(true))
       .addStringOption(opt => opt.setName('titulo').setDescription('Título do evento').setRequired(true))
       .addStringOption(opt => opt.setName('descricao').setDescription('Descrição curta do evento').setRequired(true))
       .addStringOption(opt => opt.setName('cor').setDescription('Cor do embed em hex, ex: #00b894'))
       .addStringOption(opt => opt.setName('imagem').setDescription('URL de uma imagem grande para o embed'))
+      .addStringOption(opt => opt.setName('link_label').setDescription('Texto do botão de link extra (opcional)'))
+      .addStringOption(opt => opt.setName('link_url').setDescription('URL do botão de link extra (use "remover" para limpar)'))
       .addStringOption(opt => opt.setName('campos').setDescription('Array JSON dos campos do modal (opcional — pode usar /eventconfig campo adicionar depois)')))
 
     .addSubcommand(sub => sub
       .setName('deletar')
       .setDescription('Deleta um evento e suas inscrições')
-      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true)))
+      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true)))
 
     .addSubcommand(sub => sub
       .setName('editar')
-      .setDescription('Edita nome, descrição, cor ou imagem do evento')
-      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true))
+      .setDescription('Edita nome, descrição, cor, imagem ou botão de link do evento')
+      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
       .addStringOption(opt => opt.setName('titulo').setDescription('Novo título'))
       .addStringOption(opt => opt.setName('descricao').setDescription('Nova descrição'))
       .addStringOption(opt => opt.setName('cor').setDescription('Nova cor em hex, ex: #ff0000'))
-      .addStringOption(opt => opt.setName('imagem').setDescription('Nova URL de imagem (use "remover" para limpar)')))
+      .addStringOption(opt => opt.setName('imagem').setDescription('Nova URL de imagem (use "remover" para limpar)'))
+      .addStringOption(opt => opt.setName('link_label').setDescription('Texto do botão de link (use "remover" para limpar)'))
+      .addStringOption(opt => opt.setName('link_url').setDescription('URL do botão de link (use "remover" para limpar)')))
 
     .addSubcommand(sub => sub
       .setName('info')
       .setDescription('Mostra a configuração atual do evento')
-      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true)))
+      .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true)))
 
     .addSubcommandGroup(group => group
       .setName('campo')
@@ -129,7 +143,7 @@ module.exports = {
       .addSubcommand(sub => sub
         .setName('adicionar')
         .setDescription('Adiciona um campo ao modal de inscrição')
-        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true))
+        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID interno do campo (ex: minecraft)').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Texto do campo no modal').setRequired(true))
         .addStringOption(opt => opt.setName('style').setDescription('short ou paragraph').setRequired(false))
@@ -139,13 +153,13 @@ module.exports = {
       .addSubcommand(sub => sub
         .setName('remover')
         .setDescription('Remove um campo do modal de inscrição')
-        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true))
+        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID do campo').setRequired(true)))
 
       .addSubcommand(sub => sub
         .setName('editar')
         .setDescription('Edita um campo existente')
-        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true))
+        .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID do campo').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Novo texto do campo'))
         .addStringOption(opt => opt.setName('style').setDescription('short ou paragraph'))
@@ -183,6 +197,8 @@ module.exports = {
       const description = interaction.options.getString('descricao', true);
       const color = parseColor(interaction.options.getString('cor'));
       const image = interaction.options.getString('imagem');
+      const linkLabel = interaction.options.getString('link_label');
+      const linkUrl = interaction.options.getString('link_url');
       const fieldsRaw = interaction.options.getString('campos');
 
       let fields = [];
@@ -202,6 +218,10 @@ module.exports = {
         modalTitle: `Inscrição: ${title}`,
         fields,
       };
+
+      if (linkLabel && isValidUrl(linkUrl)) {
+        config.linkButton = { label: linkLabel, url: linkUrl };
+      }
 
       saveEventConfig(slug, config);
 
@@ -236,6 +256,18 @@ module.exports = {
         delete config.image;
       } else if (image) {
         config.image = image;
+      }
+
+      const linkLabel = interaction.options.getString('link_label');
+      const linkUrl = interaction.options.getString('link_url');
+      if (linkUrl === 'remover' || linkLabel === 'remover') {
+        delete config.linkButton;
+      } else if (isValidUrl(linkUrl) && linkLabel) {
+        config.linkButton = { label: linkLabel, url: linkUrl };
+      } else if (isValidUrl(linkUrl) && config.linkButton) {
+        config.linkButton.url = linkUrl;
+      } else if (linkLabel && config.linkButton) {
+        config.linkButton.label = linkLabel;
       }
 
       if (title) config.modalTitle = `Inscrição: ${config.title}`;
@@ -321,5 +353,13 @@ module.exports = {
     }
 
     return interaction.reply({ content: 'Subcomando não reconhecido.', flags: MessageFlags.Ephemeral });
+  },
+
+  async autocomplete(interaction) {
+    const focused = interaction.options.getFocused(true);
+    if (focused.name !== 'nome') return;
+    const slugs = listEventSlugs();
+    const filtered = slugs.filter(s => s.toLowerCase().includes(focused.value.toLowerCase()));
+    await interaction.respond(filtered.map(slug => ({ name: slug, value: slug })).slice(0, 25));
   },
 };

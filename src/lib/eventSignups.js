@@ -130,7 +130,7 @@ async function updatePostedMessages(client, slug, config) {
   if (messages.length === 0) return 0;
 
   const embed = buildEventEmbed(slug, config);
-  const components = buildButtonRow(slug);
+  const components = buildButtonRow(slug, config);
   const updated = [];
 
   for (const item of messages) {
@@ -230,8 +230,7 @@ function buildEventEmbed(slug, config) {
   const embed = new EmbedBuilder()
     .setTitle(config.title || '🎉 Inscrição para o evento')
     .setDescription(config.description || 'Clique no botão abaixo para se inscrever!')
-    .setColor(parseColor(config.color))
-    .setTimestamp();
+    .setColor(parseColor(config.color));
 
   if (config.image) {
     embed.setImage(config.image);
@@ -240,21 +239,43 @@ function buildEventEmbed(slug, config) {
   return embed;
 }
 
-function buildButtonRow(slug) {
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`event:${slug}:signup`)
-        .setLabel('INSCREVA-SE')
-        .setStyle(ButtonStyle.Success)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`event:${slug}:cancel`)
-        .setLabel('Cancelar inscrição')
-        .setStyle(ButtonStyle.Danger)
-    ),
+function listEventSlugs() {
+  if (!fs.existsSync(EVENTS_DIR)) return [];
+  try {
+    return fs.readdirSync(EVENTS_DIR)
+      .filter(name => fs.statSync(path.join(EVENTS_DIR, name)).isDirectory())
+      .sort();
+  } catch (e) {
+    logger.error('Failed to list event slugs:', e);
+    return [];
+  }
+}
+
+function buildButtonRow(slug, config = null) {
+  const buttons = [
+    new ButtonBuilder()
+      .setCustomId(`event:${slug}:signup`)
+      .setLabel('INSCREVA-SE')
+      .setStyle(ButtonStyle.Success),
   ];
+
+  if (config?.linkButton?.url && config.linkButton.label) {
+    buttons.push(
+      new ButtonBuilder()
+        .setLabel(config.linkButton.label)
+        .setURL(config.linkButton.url)
+        .setStyle(ButtonStyle.Link)
+    );
+  }
+
+  buttons.push(
+    new ButtonBuilder()
+      .setCustomId(`event:${slug}:cancel`)
+      .setLabel('Cancelar inscrição')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  return [new ActionRowBuilder().addComponents(buttons)];
 }
 
 function inputStyle(style) {
@@ -316,7 +337,7 @@ async function handleCancelButton(interaction, slug) {
   if (!config) {
     return interaction.update({ content: 'Inscrição cancelada, mas a configuração do evento não foi encontrada.', components: [] });
   }
-  await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug) });
+  await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
   await interaction.followUp({ content: '✅ Inscrição cancelada.', flags: MessageFlags.Ephemeral });
 }
 
@@ -336,7 +357,7 @@ async function handleModalSubmit(interaction, slug) {
   addOrUpdateSignup(slug, interaction.user.id, displayName, values);
 
   if (interaction.message) {
-    await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug) });
+    await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
     await interaction.followUp({ content: '✅ Inscrição confirmada! Você pode clicar em "Cancelar inscrição" para desfazer.', flags: MessageFlags.Ephemeral });
   } else {
     await interaction.reply({ content: '✅ Inscrição salva!', flags: MessageFlags.Ephemeral });
@@ -349,6 +370,7 @@ module.exports = {
   saveEventConfig,
   deleteEventConfig,
   isEventPostable,
+  listEventSlugs,
   trackEventMessage,
   updatePostedMessages,
   buildEventEmbed,

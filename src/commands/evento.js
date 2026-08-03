@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { eventSlug, loadEventConfig, isEventPostable, trackEventMessage, buildEventEmbed, buildButtonRow } = require('../lib/eventSignups');
+const { eventSlug, loadEventConfig, isEventPostable, listEventSlugs, trackEventMessage, buildEventEmbed, buildButtonRow } = require('../lib/eventSignups');
 
 const ALLOWED_USER_IDS = ['904123221685702657'];
 
@@ -17,6 +17,7 @@ module.exports = {
       .setName('nome')
       .setDescription('Nome do evento')
       .setRequired(true)
+      .setAutocomplete(true)
     ),
 
   async execute(interaction) {
@@ -46,7 +47,7 @@ module.exports = {
 
     await interaction.reply({
       embeds: [buildEventEmbed(slug, config)],
-      components: buildButtonRow(slug),
+      components: buildButtonRow(slug, config),
     });
 
     try {
@@ -55,5 +56,12 @@ module.exports = {
     } catch (e) {
       // Ignore tracking failures — the event is still posted.
     }
+  },
+
+  async autocomplete(interaction) {
+    const focused = interaction.options.getFocused(true);
+    const slugs = listEventSlugs();
+    const filtered = slugs.filter(s => s.toLowerCase().includes(focused.value.toLowerCase()));
+    await interaction.respond(filtered.map(slug => ({ name: slug, value: slug })).slice(0, 25));
   },
 };
