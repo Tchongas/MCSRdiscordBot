@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { eventSlug, loadEventConfig, buildEventEmbed, buildButtonRow } = require('../lib/eventSignups');
+const { eventSlug, loadEventConfig, isEventPostable, trackEventMessage, buildEventEmbed, buildButtonRow } = require('../lib/eventSignups');
 
 const ALLOWED_USER_IDS = ['904123221685702657'];
 
@@ -37,10 +37,23 @@ module.exports = {
         flags: MessageFlags.Ephemeral,
       });
     }
+    if (!isEventPostable(config)) {
+      return interaction.reply({
+        content: `O evento \`${slug}\` existe, mas ainda não tem campos de inscrição. Use \`/eventconfig campo adicionar\`.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
     await interaction.reply({
       embeds: [buildEventEmbed(slug, config)],
       components: buildButtonRow(slug),
     });
+
+    try {
+      const message = await interaction.fetchReply();
+      trackEventMessage(slug, message);
+    } catch (e) {
+      // Ignore tracking failures — the event is still posted.
+    }
   },
 };

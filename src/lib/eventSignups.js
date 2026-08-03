@@ -46,12 +46,16 @@ function loadEventConfig(slug) {
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const config = JSON.parse(raw);
-    if (!config || !Array.isArray(config.fields) || config.fields.length === 0) return null;
+    if (!config || !Array.isArray(config.fields)) return null;
     return config;
   } catch (e) {
     logger.error(`Failed to load event config for ${slug}:`, e);
     return null;
   }
+}
+
+function isEventPostable(config) {
+  return config && Array.isArray(config.fields) && config.fields.length > 0;
 }
 
 function saveEventConfig(slug, config) {
@@ -71,11 +75,82 @@ function deleteEventConfig(slug) {
     if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
     const signupsPath = eventSignupsPath(slug);
     if (fs.existsSync(signupsPath)) fs.unlinkSync(signupsPath);
+    const messagesPath = eventMessagesPath(slug);
+    if (fs.existsSync(messagesPath)) fs.unlinkSync(messagesPath);
     return true;
   } catch (e) {
     logger.error(`Failed to delete event ${slug}:`, e);
     return false;
   }
+}
+
+function eventMessagesPath(slug) {
+  return path.join(EVENTS_DIR, slug, 'messages.json');
+}
+
+function readTrackedMessages(slug) {
+  ensureEventDir(slug);
+  const filePath = eventMessagesPath(slug);
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data.filter(m => m && m.messageId && m.channelId);
+  } catch (e) {
+    logger.error(`Failed to read tracked messages for ${slug}:`, e);
+    return [];
+  }
+}
+
+function writeTrackedMessages(slug, messages) {
+  ensureEventDir(slug);
+  try {
+    fs.writeFileSync(eventMessagesPath(slug), JSON.stringify(messages, null, 2), 'utf-8');
+  } catch (e) {
+    logger.error(`Failed to write tracked messages for ${slug}:`, e);
+  }
+}
+
+function trackEventMessage(slug, message) {
+  if (!message?.id || !message?.channelId) return;
+  const list = readTrackedMessages(slug);
+  if (list.some(m => m.messageId === message.id)) return;
+  list.push({
+    messageId: message.id,
+    channelId: message.channelId,
+    guildId: message.guildId || null,
+    postedAt: new Date().toISOString(),
+  });
+  writeTrackedMessages(slug, list);
+}
+
+async function updatePostedMessages(client, slug, config) {
+  const messages = readTrackedMessages(slug);
+  if (messages.length === 0) return 0;
+
+  const embed = buildEventEmbed(slug, config);
+  const components = buildButtonRow(slug);
+  const updated = [];
+
+  for (const item of messages) {
+    try {
+      const channel = await client.channels.fetch(item.channelId);
+      if (!channel) throw new Error('Channel not found');
+      const msg = await channel.messages.fetch(item.messageId);
+      if (!msg) throw new Error('Message not found');
+      await msg.edit({ embeds: [embed], components });
+      updated.push(item.messageId);
+    } catch (e) {
+      logger.warn(`Failed to update tracked event message ${item.messageId}: ${e.message}`);
+    }
+  }
+
+  const cleaned = messages.filter(m => updated.includes(m.messageId));
+  if (cleaned.length !== messages.length) {
+    writeTrackedMessages(slug, cleaned);
+  }
+  return updated.length;
 }
 
 function readSignups(slug) {
@@ -224,6 +299,9 @@ async function handleSignupButton(interaction, slug) {
   if (!config) {
     return interaction.reply({ content: 'Configuração do evento não encontrada.', flags: MessageFlags.Ephemeral });
   }
+  if (!isEventPostable(config)) {
+    return interaction.reply({ content: 'Este evento ainda não possui campos de inscrição. Um administrador precisa adicioná-los.', flags: MessageFlags.Ephemeral });
+  }
   const existing = getSignup(slug, interaction.user.id);
   const modal = buildSignupModal(slug, config, existing);
   await interaction.showModal(modal);
@@ -270,6 +348,9 @@ module.exports = {
   loadEventConfig,
   saveEventConfig,
   deleteEventConfig,
+  isEventPostable,
+  trackEventMessage,
+  updatePostedMessages,
   buildEventEmbed,
   buildButtonRow,
   buildSignupModal,
