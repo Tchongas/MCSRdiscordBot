@@ -94,7 +94,8 @@ The link button is a standard Discord URL button — it opens the URL when click
 
 ## Button notes
 
-- Discord buttons in the same action row share the row width equally, so the **INSCREVA-SE**, optional link, and **Cancelar inscrição** buttons all have the same width and together span the full message/embed width.
+- Each button lives in its own action row so it can span the full message width.
+- Button labels are padded with invisible characters to the same length and centered, making all buttons visually the same width.
 - The event embed no longer has a timestamp footer.
 
 ## Field configuration

@@ -251,31 +251,49 @@ function listEventSlugs() {
   }
 }
 
+const INVISIBLE_FILL = '\u3164';
+
+function centerPadLabel(label, width = 80) {
+  if (!label || label.length >= width) return label.slice(0, width);
+  const totalPad = width - label.length;
+  const left = Math.floor(totalPad / 2);
+  const right = totalPad - left;
+  return INVISIBLE_FILL.repeat(left) + label + INVISIBLE_FILL.repeat(right);
+}
+
 function buildButtonRow(slug, config = null) {
-  const buttons = [
-    new ButtonBuilder()
-      .setCustomId(`event:${slug}:signup`)
-      .setLabel('INSCREVA-SE')
-      .setStyle(ButtonStyle.Success),
-  ];
+  const rows = [];
+
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`event:${slug}:signup`)
+        .setLabel(centerPadLabel('INSCREVA-SE', 80))
+        .setStyle(ButtonStyle.Success)
+    )
+  );
 
   if (config?.linkButton?.url && config.linkButton.label) {
-    buttons.push(
-      new ButtonBuilder()
-        .setLabel(config.linkButton.label)
-        .setURL(config.linkButton.url)
-        .setStyle(ButtonStyle.Link)
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel(centerPadLabel(config.linkButton.label, 80))
+          .setURL(config.linkButton.url)
+          .setStyle(ButtonStyle.Link)
+      )
     );
   }
 
-  buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`event:${slug}:cancel`)
-      .setLabel('Cancelar inscrição')
-      .setStyle(ButtonStyle.Danger)
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`event:${slug}:cancel`)
+        .setLabel(centerPadLabel('Cancelar inscrição', 80))
+        .setStyle(ButtonStyle.Danger)
+    )
   );
 
-  return [new ActionRowBuilder().addComponents(buttons)];
+  return rows;
 }
 
 function inputStyle(style) {
