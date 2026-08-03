@@ -103,6 +103,16 @@ function readTrackedMessages(slug) {
   }
 }
 
+function clearTrackedMessages(slug) {
+  ensureEventDir(slug);
+  try {
+    const filePath = eventMessagesPath(slug);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (e) {
+    logger.error(`Failed to clear tracked messages for ${slug}:`, e);
+  }
+}
+
 function writeTrackedMessages(slug, messages) {
   ensureEventDir(slug);
   try {
@@ -268,13 +278,6 @@ function buildButtonRow(slug, config = null) {
     );
   }
 
-  buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`event:${slug}:cancel`)
-      .setLabel('Cancelar inscrição')
-      .setStyle(ButtonStyle.Danger)
-  );
-
   return [new ActionRowBuilder().addComponents(buttons)];
 }
 
@@ -356,11 +359,16 @@ async function handleModalSubmit(interaction, slug) {
   const displayName = interaction.member?.displayName || interaction.user.username;
   addOrUpdateSignup(slug, interaction.user.id, displayName, values);
 
+  function formatConfirmation(config, values) {
+    const lines = config.fields.map(f => `${f.label}: ${values[f.id] || ''}`).join('\n');
+    return `# ✅ Inscrição confirmada!\n${lines}\n\n**Qualquer duvida chame um moderador!**`;
+  }
+
   if (interaction.message) {
     await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
-    await interaction.followUp({ content: '✅ Inscrição confirmada! Você pode clicar em "Cancelar inscrição" para desfazer.', flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
   } else {
-    await interaction.reply({ content: '✅ Inscrição salva!', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
   }
 }
 
@@ -372,6 +380,7 @@ module.exports = {
   isEventPostable,
   listEventSlugs,
   trackEventMessage,
+  clearTrackedMessages,
   updatePostedMessages,
   buildEventEmbed,
   buildButtonRow,

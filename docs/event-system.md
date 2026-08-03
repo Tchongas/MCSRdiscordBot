@@ -48,6 +48,10 @@ All `nome` options support autocomplete — start typing and pick from existing 
 
 Posts the event embed. Only admins and the hardcoded allowed user can use it.
 
+### `/eventolimpar`
+
+Deletes every posted embed for an event and stops tracking their message IDs. Same permissions as `/evento`.
+
 ## Adding or changing an image
 
 The event embed supports one big image via the `imagem` option.
@@ -78,7 +82,7 @@ Rules:
 
 ## Adding a link button
 
-You can add a third blue button between **INSCREVA-SE** and **Cancelar inscrição**.
+You can add an optional blue link button next to **INSCREVA-SE**.
 
 ```txt
 /eventconfig editar nome:torneio_verao link_label:"Regras do torneio" link_url:https://example.com/regras
@@ -94,7 +98,7 @@ The link button is a standard Discord URL button — it opens the URL when click
 
 ## Button notes
 
-- All buttons live in the same action row and share the row width equally (each ~1/3 when the link button is present, ~1/2 otherwise).
+- Buttons live in the same action row and share the row width equally.
 - The event embed no longer has a timestamp footer.
 
 ## Field configuration
