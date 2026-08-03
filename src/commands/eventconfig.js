@@ -146,7 +146,11 @@ module.exports = {
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID interno do campo (ex: minecraft)').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Texto do campo no modal').setRequired(true))
-        .addStringOption(opt => opt.setName('style').setDescription('short ou paragraph').setRequired(false))
+        .addStringOption(opt => opt.setName('style').setDescription('Tipo de campo no modal').setRequired(false)
+          .addChoices(
+            { name: 'Short (uma linha)', value: 'short' },
+            { name: 'Paragraph (várias linhas)', value: 'paragraph' }
+          ))
         .addBooleanOption(opt => opt.setName('obrigatorio').setDescription('Se o campo é obrigatório').setRequired(false))
         .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres').setRequired(false)))
 
@@ -162,7 +166,11 @@ module.exports = {
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID do campo').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Novo texto do campo'))
-        .addStringOption(opt => opt.setName('style').setDescription('short ou paragraph'))
+        .addStringOption(opt => opt.setName('style').setDescription('Tipo de campo no modal')
+          .addChoices(
+            { name: 'Short (uma linha)', value: 'short' },
+            { name: 'Paragraph (várias linhas)', value: 'paragraph' }
+          ))
         .addBooleanOption(opt => opt.setName('obrigatorio').setDescription('Se o campo é obrigatório'))
         .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres')))),
 

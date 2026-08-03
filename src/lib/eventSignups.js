@@ -11,6 +11,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 const logger = require('./logger');
+const { scheduleSignupSync, scheduleSignupRemoval } = require('./externalSignupSync');
 
 const EVENTS_DIR = path.resolve(__dirname, '../../data/events');
 
@@ -203,12 +204,15 @@ function addOrUpdateSignup(slug, userId, displayName, values) {
     updatedAt: new Date().toISOString(),
   };
   writeSignups(slug, data);
+  scheduleSignupSync(slug, userId, displayName, values);
 }
 
-function removeSignup(slug, userId) {
+function removeSignup(slug, userId, displayName = '') {
   const data = readSignups(slug);
+  const existing = data.signups[userId];
   delete data.signups[userId];
   writeSignups(slug, data);
+  scheduleSignupRemoval(slug, userId, displayName || existing?.displayName || '');
 }
 
 function getSignupList(slug) {
@@ -335,7 +339,8 @@ async function handleCancelButton(interaction, slug) {
   if (!hasSignup(slug, interaction.user.id)) {
     return interaction.reply({ content: 'Você ainda não está inscrito.', flags: MessageFlags.Ephemeral });
   }
-  removeSignup(slug, interaction.user.id);
+  const displayName = interaction.member?.displayName || interaction.user.username;
+  removeSignup(slug, interaction.user.id, displayName);
   const config = loadEventConfig(slug);
   if (!config) {
     return interaction.update({ content: 'Inscrição cancelada, mas a configuração do evento não foi encontrada.', components: [] });
@@ -379,6 +384,7 @@ module.exports = {
   deleteEventConfig,
   isEventPostable,
   listEventSlugs,
+  readTrackedMessages,
   trackEventMessage,
   clearTrackedMessages,
   updatePostedMessages,

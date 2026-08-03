@@ -109,7 +109,7 @@ Each field in the modal has these properties:
 |----------|----------|------|-------------|
 | `id` | Yes | string | Internal ID. Use only lowercase letters, numbers, and underscores. |
 | `label` | Yes | string | Text shown above the input in the modal. |
-| `style` | No | `short` or `paragraph` | Single-line or multi-line. Default: `short`. |
+| `style` | No | `short` or `paragraph` | Text input style in the modal. Discord modals only support plain text inputs, so these are the only two options. Default: `short`. |
 | `required` | No | boolean | Whether the user must fill it. Default: `true`. |
 | `maxLength` | No | number | Max characters. Default: `4000`. |
 
@@ -152,6 +152,32 @@ Stored at `data/events/<slug>/config.json`:
 5. User submits. The bot saves the answers to `data/events/<slug>/signups.json`.
 6. The bot sends a private confirmation message.
 7. If the admin edits the event (`/eventconfig editar` or `/eventconfig campo ...`), all tracked posted messages are updated automatically.
+
+## External database sync
+
+Signups are always saved locally to `data/events/<slug>/signups.json` first. If you set an external endpoint, every signup (and cancellation) is also queued and sent asynchronously.
+
+Environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `EXTERNAL_SIGNUP_ENDPOINT` | URL to POST signup events to. If unset, external sync is disabled. |
+| `EXTERNAL_SIGNUP_TOKEN` | Optional bearer token sent as `Authorization: Bearer <token>`. |
+
+Payload sent to the endpoint:
+
+```json
+{
+  "type": "upsert",
+  "slug": "torneio_verao",
+  "userId": "123456789",
+  "displayName": "PlayerName",
+  "values": { "minecraft": "Steve", "duo": "Alex" },
+  "sentAt": "2026-08-03T19:51:38.000Z"
+}
+```
+
+For cancellations the type is `"delete"` and `values` is empty. Failed pushes are retried with exponential backoff (starts at 30s, max 1h) and stored in `data/external-signup-queue.json` across restarts. The main signup flow is never blocked by the external sync.
 
 ## Important limitations
 

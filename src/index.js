@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { loadCommands, loadEvents } = require('./lib/loader');
+const { startExternalSignupSync } = require('./lib/externalSignupSync');
 const logger = require('./lib/logger');
 
 const { TOKEN } = process.env;
@@ -18,5 +19,9 @@ const client = new Client({
 // Load commands into client and bind events
 loadCommands(client);
 loadEvents(client);
+
+client.once('ready', () => {
+  startExternalSignupSync();
+});
 
 client.login(TOKEN);
