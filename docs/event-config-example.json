@@ -1,0 +1,29 @@
+{
+  "title": "🎉 Evento de Teste",
+  "description": "Inscreva-se no evento de teste! Preencha os campos no modal.",
+  "color": "#00b894",
+  "modalTitle": "Inscrição no evento de teste",
+  "fields": [
+    {
+      "id": "minecraft",
+      "label": "Minecraft username",
+      "style": "short",
+      "required": true,
+      "maxLength": 32
+    },
+    {
+      "id": "pizza",
+      "label": "Pizza favorita",
+      "style": "short",
+      "required": true,
+      "maxLength": 64
+    },
+    {
+      "id": "notas",
+      "label": "Observações",
+      "style": "paragraph",
+      "required": false,
+      "maxLength": 500
+    }
+  ]
+}

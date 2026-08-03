@@ -49,18 +49,18 @@ module.exports = {
         }
       }
 
-      if (id === eventSignups.BUTTON_SIGNUP) {
+      const eventAction = eventSignups.parseEventCustomId(id);
+      if (eventAction?.action === 'signup') {
         try {
-          return await eventSignups.handleSignupButton(interaction);
+          return await eventSignups.handleSignupButton(interaction, eventAction.slug);
         } catch (error) {
           logger.error('Event signup button error:', error);
         }
         return;
       }
-
-      if (id === eventSignups.BUTTON_CANCEL) {
+      if (eventAction?.action === 'cancel') {
         try {
-          return await eventSignups.handleCancelButton(interaction);
+          return await eventSignups.handleCancelButton(interaction, eventAction.slug);
         } catch (error) {
           logger.error('Event cancel button error:', error);
         }
@@ -100,9 +100,10 @@ module.exports = {
     }
 
     if (interaction.isModalSubmit()) {
-      if (interaction.customId === eventSignups.MODAL_SIGNUP) {
+      const eventModal = eventSignups.parseEventCustomId(interaction.customId);
+      if (eventModal?.action === 'modal') {
         try {
-          return await eventSignups.handleModalSubmit(interaction);
+          return await eventSignups.handleModalSubmit(interaction, eventModal.slug);
         } catch (error) {
           logger.error('Event signup modal error:', error);
           if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
