@@ -12,6 +12,13 @@ const {
 
 const HEX_COLOR = /^#?[0-9a-fA-F]{6}$/;
 const VALID_FIELD_STYLES = ['short', 'paragraph'];
+const ALLOWED_USER_IDS = ['904123221685702657'];
+
+function canManageEvents(interaction) {
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return true;
+  if (ALLOWED_USER_IDS.includes(interaction.user.id)) return true;
+  return false;
+}
 
 function parseColor(value) {
   if (!value) return undefined;
@@ -85,7 +92,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('eventconfig')
     .setDescription('Gerencia eventos de inscrição')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 
     .addSubcommand(sub => sub
       .setName('criar')
@@ -147,6 +153,13 @@ module.exports = {
         .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres')))),
 
   async execute(interaction) {
+    if (!canManageEvents(interaction)) {
+      return interaction.reply({
+        content: 'Você não tem permissão para gerenciar eventos.',
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const sub = interaction.options.getSubcommand();
     const group = interaction.options.getSubcommandGroup(false);
     const name = interaction.options.getString('nome', true);
