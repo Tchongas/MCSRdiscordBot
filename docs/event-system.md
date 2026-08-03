@@ -94,8 +94,7 @@ The link button is a standard Discord URL button — it opens the URL when click
 
 ## Button notes
 
-- Each button lives in its own action row so it can span the full message width.
-- Button labels are padded with invisible characters to the same length and centered, making all buttons visually the same width.
+- All buttons live in the same action row and share the row width equally (each ~1/3 when the link button is present, ~1/2 otherwise).
 - The event embed no longer has a timestamp footer.
 
 ## Field configuration
