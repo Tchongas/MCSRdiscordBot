@@ -22,6 +22,16 @@ const { scheduleSignupSync, scheduleSignupRemoval } = require('./externalSignupS
 
 const EVENTS_DIR = path.resolve(__dirname, '../../data/events');
 
+// Per-slug lock to prevent concurrent read-modify-write races
+const _locks = new Map();
+function acquireLock(slug) {
+  const chain = _locks.get(slug) || Promise.resolve();
+  let release;
+  const next = new Promise(resolve => { release = resolve; });
+  _locks.set(slug, chain.then(() => next));
+  return chain.then(() => release);
+}
+
 function ensureEventDir(slug) {
   const dir = path.join(EVENTS_DIR, slug);
   if (!fs.existsSync(dir)) {
@@ -203,22 +213,33 @@ function getSignup(slug, userId) {
   return readSignups(slug).signups[userId] || null;
 }
 
-function addOrUpdateSignup(slug, userId, displayName, values) {
-  const data = readSignups(slug);
-  data.signups[userId] = {
-    displayName,
-    values: values || {},
-    updatedAt: new Date().toISOString(),
-  };
-  writeSignups(slug, data);
+async function addOrUpdateSignup(slug, userId, displayName, values) {
+  const release = await acquireLock(slug);
+  try {
+    const data = readSignups(slug);
+    data.signups[userId] = {
+      displayName,
+      values: values || {},
+      updatedAt: new Date().toISOString(),
+    };
+    writeSignups(slug, data);
+  } finally {
+    release();
+  }
   scheduleSignupSync(slug, userId, displayName, values);
 }
 
-function removeSignup(slug, userId, displayName = '') {
-  const data = readSignups(slug);
-  const existing = data.signups[userId];
-  delete data.signups[userId];
-  writeSignups(slug, data);
+async function removeSignup(slug, userId, displayName = '') {
+  const release = await acquireLock(slug);
+  let existing;
+  try {
+    const data = readSignups(slug);
+    existing = data.signups[userId];
+    delete data.signups[userId];
+    writeSignups(slug, data);
+  } finally {
+    release();
+  }
   scheduleSignupRemoval(slug, userId, displayName || existing?.displayName || '');
 }
 
@@ -334,10 +355,12 @@ function buildSignupModal(slug, config, existing = null) {
     }
 
     if (type === 'string_select') {
-      const minV = field.required === false ? 0 : (field.minValues ?? 1);
+      const isRequired = field.required !== false;
+      const minV = isRequired ? (field.minValues ?? 1) : 0;
       const select = new StringSelectMenuBuilder()
         .setCustomId(customId)
         .setOptions(field.options || [])
+        .setRequired(isRequired)
         .setMinValues(minV)
         .setMaxValues(field.maxValues ?? 1);
       if (field.placeholder) select.setPlaceholder(field.placeholder);
@@ -394,19 +417,24 @@ async function handleCancelButton(interaction, slug) {
     return interaction.reply({ content: 'Você ainda não está inscrito.', flags: MessageFlags.Ephemeral });
   }
   const displayName = interaction.member?.displayName || interaction.user.username;
-  removeSignup(slug, interaction.user.id, displayName);
+  await removeSignup(slug, interaction.user.id, displayName);
   const config = loadEventConfig(slug);
   if (!config) {
-    return interaction.update({ content: 'Inscrição cancelada, mas a configuração do evento não foi encontrada.', components: [] });
+    return safeReply(interaction, 'Inscrição cancelada, mas a configuração do evento não foi encontrada.');
   }
-  await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
-  await interaction.followUp({ content: '✅ Inscrição cancelada.', flags: MessageFlags.Ephemeral });
+  try {
+    await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
+    await interaction.followUp({ content: '✅ Inscrição cancelada.', flags: MessageFlags.Ephemeral });
+  } catch (error) {
+    logger.warn(`Cancel button update failed for ${slug}: ${error.message}`);
+    await safeReply(interaction, '✅ Inscrição cancelada.');
+  }
 }
 
 async function handleModalSubmit(interaction, slug) {
   const config = loadEventConfig(slug);
   if (!config) {
-    return interaction.reply({ content: 'Configuração do evento não encontrada.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, 'Configuração do evento não encontrada.');
   }
 
   const values = {};
@@ -444,7 +472,7 @@ async function handleModalSubmit(interaction, slug) {
   }
 
   const displayName = interaction.member?.displayName || interaction.user.username;
-  addOrUpdateSignup(slug, interaction.user.id, displayName, values);
+  await addOrUpdateSignup(slug, interaction.user.id, displayName, values);
 
   function formatConfirmation(config, values) {
     const lines = config.fields
@@ -454,12 +482,24 @@ async function handleModalSubmit(interaction, slug) {
     return `# ✅ Inscrição confirmada!\n${lines}\n\n**Qualquer duvida chame um moderador!**`;
   }
 
-  if (interaction.message) {
-    await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
-    await interaction.followUp({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
-  } else {
-    await interaction.reply({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
+  try {
+    if (interaction.message) {
+      await interaction.update({ embeds: [buildEventEmbed(slug, config)], components: buildButtonRow(slug, config) });
+      await interaction.followUp({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
+    } else {
+      await interaction.reply({ content: formatConfirmation(config, values), flags: MessageFlags.Ephemeral });
+    }
+  } catch (error) {
+    logger.warn(`Modal submit response failed for ${slug}: ${error.message}`);
+    await safeReply(interaction, formatConfirmation(config, values));
   }
+}
+
+function safeReply(interaction, content) {
+  if (interaction.replied || interaction.deferred) {
+    return interaction.followUp({ content, flags: MessageFlags.Ephemeral }).catch(() => {});
+  }
+  return interaction.reply({ content, flags: MessageFlags.Ephemeral }).catch(() => {});
 }
 
 module.exports = {
