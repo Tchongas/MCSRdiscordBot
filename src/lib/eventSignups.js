@@ -6,9 +6,15 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ModalBuilder,
+  LabelBuilder,
   TextInputBuilder,
   TextInputStyle,
-  ComponentType,
+  TextDisplayBuilder,
+  StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
+  RoleSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  MentionableSelectMenuBuilder,
   MessageFlags,
 } = require('discord.js');
 const logger = require('./logger');
@@ -301,76 +307,58 @@ function isTextFieldType(type) {
 }
 
 function buildSignupModal(slug, config, existing = null) {
-  const components = [];
+  const modal = new ModalBuilder()
+    .setCustomId(`event:${slug}:modal`)
+    .setTitle(config.modalTitle || 'Inscrição no evento');
 
   for (const field of config.fields) {
     const customId = `event:${slug}:field:${field.id}`;
     const type = fieldType(field);
 
     if (type === 'text_display') {
-      components.push({
-        type: ComponentType.TextDisplay,
-        content: field.content || field.label || '',
-      });
+      modal.addTextDisplayComponents(new TextDisplayBuilder({ content: field.content || field.label || '' }));
       continue;
     }
 
     if (isTextFieldType(type)) {
-      const textInput = {
-        type: ComponentType.TextInput,
-        custom_id: customId,
-        style: type === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short,
-        label: field.label,
-        required: field.required !== false,
-        max_length: field.maxLength || 4000,
-      };
+      const textInput = new TextInputBuilder()
+        .setCustomId(customId)
+        .setLabel(field.label)
+        .setStyle(type === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+        .setRequired(field.required !== false)
+        .setMaxLength(field.maxLength || 4000);
       if (existing?.values?.[field.id]) {
-        textInput.value = String(existing.values[field.id]).slice(0, field.maxLength || 4000);
+        textInput.setValue(String(existing.values[field.id]).slice(0, field.maxLength || 4000));
       }
-      components.push({
-        type: ComponentType.Label,
-        label: field.label,
-        component: textInput,
-      });
+      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: textInput }));
       continue;
     }
 
     if (type === 'string_select') {
-      components.push({
-        type: ComponentType.Label,
-        label: field.label,
-        component: {
-          type: ComponentType.StringSelect,
-          custom_id: customId,
-          options: field.options || [],
-          placeholder: field.placeholder,
-          min_values: field.minValues ?? (field.required !== false ? 1 : 0),
-          max_values: field.maxValues ?? 1,
-        },
-      });
+      const select = new StringSelectMenuBuilder()
+        .setCustomId(customId)
+        .setOptions(field.options || [])
+        .setMinValues(field.minValues ?? (field.required !== false ? 1 : 0))
+        .setMaxValues(field.maxValues ?? 1);
+      if (field.placeholder) select.setPlaceholder(field.placeholder);
+      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: select }));
       continue;
     }
 
-    const selectComponent = { custom_id: customId, placeholder: field.placeholder };
-    if (type === 'user_select') selectComponent.type = ComponentType.UserSelect;
-    else if (type === 'role_select') selectComponent.type = ComponentType.RoleSelect;
-    else if (type === 'channel_select') selectComponent.type = ComponentType.ChannelSelect;
-    else if (type === 'mentionable_select') selectComponent.type = ComponentType.MentionableSelect;
-
-    if (selectComponent.type) {
-      components.push({
-        type: ComponentType.Label,
-        label: field.label,
-        component: selectComponent,
-      });
+    if (type === 'user_select' || type === 'role_select' || type === 'channel_select' || type === 'mentionable_select') {
+      const SelectClass = {
+        user_select: UserSelectMenuBuilder,
+        role_select: RoleSelectMenuBuilder,
+        channel_select: ChannelSelectMenuBuilder,
+        mentionable_select: MentionableSelectMenuBuilder,
+      }[type];
+      const select = new SelectClass().setCustomId(customId);
+      if (field.placeholder) select.setPlaceholder(field.placeholder);
+      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: select }));
     }
   }
 
-  return {
-    title: config.modalTitle || 'Inscrição no evento',
-    custom_id: `event:${slug}:modal`,
-    components,
-  };
+  return modal;
 }
 
 function parseEventCustomId(customId) {
@@ -392,6 +380,7 @@ async function handleSignupButton(interaction, slug) {
   }
   const existing = getSignup(slug, interaction.user.id);
   const modal = buildSignupModal(slug, config, existing);
+  logger.info(`Opening modal for ${slug}. Field types: ${config.fields.map(f => f.type || f.style).join(', ')}. Components: ${modal.components.map(c => c.type).join(', ')}`);
   try {
     await interaction.showModal(modal);
   } catch (error) {

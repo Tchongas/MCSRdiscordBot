@@ -10,6 +10,7 @@ const {
   buildEventEmbed,
   buildButtonRow,
 } = require('../lib/eventSignups');
+const logger = require('../lib/logger');
 
 const HEX_COLOR = /^#?[0-9a-fA-F]{6}$/;
 const VALID_FIELD_TYPES = ['short', 'paragraph', 'text_display', 'string_select', 'user_select', 'role_select', 'channel_select', 'mentionable_select'];
@@ -365,10 +366,12 @@ module.exports = {
         if (config.fields.some(f => f.id === fieldId)) {
           return interaction.reply({ content: `Já existe um campo com id \`${fieldId}\`. Use \`/eventconfig campo editar\`.`, flags: MessageFlags.Ephemeral });
         }
+        const tipoValue = interaction.options.getString('tipo');
+        logger.info(`eventconfig campo adicionar: tipo raw = ${tipoValue}`);
         const newField = {
           id: fieldId,
           label: interaction.options.getString('label', true),
-          type: interaction.options.getString('tipo') || 'short',
+          type: tipoValue || 'short',
           content: interaction.options.getString('conteudo') || undefined,
           placeholder: interaction.options.getString('placeholder') || undefined,
           required: interaction.options.getBoolean('obrigatorio') !== false,
@@ -389,6 +392,7 @@ module.exports = {
         } catch (e) {
           return interaction.reply({ content: `Erro no campo: ${e.message}`, flags: MessageFlags.Ephemeral });
         }
+        logger.info(`eventconfig campo adicionar: saved field ${fieldId} as type ${config.fields[config.fields.length - 1].type}`);
         saveEventConfig(slug, config);
         const updatedCount = await updatePostedMessages(interaction.client, slug, config);
         const syncText = updatedCount > 0 ? ` ${updatedCount} mensagem(ns) postada(s) atualizada(s).` : '';
