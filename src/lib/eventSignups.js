@@ -323,14 +323,13 @@ function buildSignupModal(slug, config, existing = null) {
     if (isTextFieldType(type)) {
       const textInput = new TextInputBuilder()
         .setCustomId(customId)
-        .setLabel(field.label)
         .setStyle(type === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short)
         .setRequired(field.required !== false)
         .setMaxLength(field.maxLength || 4000);
       if (existing?.values?.[field.id]) {
         textInput.setValue(String(existing.values[field.id]).slice(0, field.maxLength || 4000));
       }
-      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: textInput }));
+      modal.addLabelComponents(new LabelBuilder().setLabel(field.label).setTextInputComponent(textInput));
       continue;
     }
 
@@ -341,7 +340,7 @@ function buildSignupModal(slug, config, existing = null) {
         .setMinValues(field.minValues ?? (field.required !== false ? 1 : 0))
         .setMaxValues(field.maxValues ?? 1);
       if (field.placeholder) select.setPlaceholder(field.placeholder);
-      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: select }));
+      modal.addLabelComponents(new LabelBuilder().setLabel(field.label).setStringSelectMenuComponent(select));
       continue;
     }
 
@@ -354,7 +353,7 @@ function buildSignupModal(slug, config, existing = null) {
       }[type];
       const select = new SelectClass().setCustomId(customId);
       if (field.placeholder) select.setPlaceholder(field.placeholder);
-      modal.addLabelComponents(new LabelBuilder({ label: field.label, component: select }));
+      modal.addLabelComponents(new LabelBuilder().setLabel(field.label).setComponent(select));
     }
   }
 

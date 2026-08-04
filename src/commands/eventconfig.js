@@ -366,12 +366,12 @@ module.exports = {
         if (config.fields.some(f => f.id === fieldId)) {
           return interaction.reply({ content: `Já existe um campo com id \`${fieldId}\`. Use \`/eventconfig campo editar\`.`, flags: MessageFlags.Ephemeral });
         }
-        const tipoValue = interaction.options.getString('tipo');
+        const tipoValue = interaction.options.getString('tipo', true);
         logger.info(`eventconfig campo adicionar: tipo raw = ${tipoValue}`);
         const newField = {
           id: fieldId,
           label: interaction.options.getString('label', true),
-          type: tipoValue || 'short',
+          type: tipoValue,
           content: interaction.options.getString('conteudo') || undefined,
           placeholder: interaction.options.getString('placeholder') || undefined,
           required: interaction.options.getBoolean('obrigatorio') !== false,
