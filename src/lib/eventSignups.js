@@ -334,10 +334,11 @@ function buildSignupModal(slug, config, existing = null) {
     }
 
     if (type === 'string_select') {
+      const minV = field.required === false ? 0 : (field.minValues ?? 1);
       const select = new StringSelectMenuBuilder()
         .setCustomId(customId)
         .setOptions(field.options || [])
-        .setMinValues(field.minValues ?? (field.required !== false ? 1 : 0))
+        .setMinValues(minV)
         .setMaxValues(field.maxValues ?? 1);
       if (field.placeholder) select.setPlaceholder(field.placeholder);
       modal.addLabelComponents(new LabelBuilder().setLabel(field.label).setStringSelectMenuComponent(select));
