@@ -8,6 +8,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  ComponentType,
   MessageFlags,
 } = require('discord.js');
 const logger = require('./logger');
@@ -285,32 +286,91 @@ function buildButtonRow(slug, config = null) {
   return [new ActionRowBuilder().addComponents(buttons)];
 }
 
-function inputStyle(style) {
-  if (String(style).toLowerCase() === 'paragraph') return TextInputStyle.Paragraph;
-  return TextInputStyle.Short;
+const VALID_FIELD_TYPES = ['short', 'paragraph', 'text_display', 'string_select', 'user_select', 'role_select', 'channel_select', 'mentionable_select'];
+
+function fieldType(field) {
+  const type = String(field.type || '').toLowerCase();
+  if (VALID_FIELD_TYPES.includes(type)) return type;
+  const legacy = String(field.style || '').toLowerCase();
+  if (legacy === 'paragraph') return 'paragraph';
+  return 'short';
+}
+
+function isTextFieldType(type) {
+  return type === 'short' || type === 'paragraph';
 }
 
 function buildSignupModal(slug, config, existing = null) {
-  const modal = new ModalBuilder()
-    .setCustomId(`event:${slug}:modal`)
-    .setTitle(config.modalTitle || 'Inscrição no evento');
+  const components = [];
 
   for (const field of config.fields) {
-    const input = new TextInputBuilder()
-      .setCustomId(`event:${slug}:field:${field.id}`)
-      .setLabel(field.label)
-      .setStyle(inputStyle(field.style))
-      .setRequired(field.required !== false)
-      .setMaxLength(field.maxLength || 4000);
+    const customId = `event:${slug}:field:${field.id}`;
+    const type = fieldType(field);
 
-    if (existing?.values?.[field.id]) {
-      input.setValue(String(existing.values[field.id]).slice(0, field.maxLength || 4000));
+    if (type === 'text_display') {
+      components.push({
+        type: ComponentType.TextDisplay,
+        content: field.content || field.label || '',
+      });
+      continue;
     }
 
-    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    if (isTextFieldType(type)) {
+      const textInput = {
+        type: ComponentType.TextInput,
+        custom_id: customId,
+        style: type === 'paragraph' ? TextInputStyle.Paragraph : TextInputStyle.Short,
+        label: field.label,
+        required: field.required !== false,
+        max_length: field.maxLength || 4000,
+      };
+      if (existing?.values?.[field.id]) {
+        textInput.value = String(existing.values[field.id]).slice(0, field.maxLength || 4000);
+      }
+      components.push({
+        type: ComponentType.Label,
+        label: field.label,
+        component: textInput,
+      });
+      continue;
+    }
+
+    if (type === 'string_select') {
+      components.push({
+        type: ComponentType.Label,
+        label: field.label,
+        component: {
+          type: ComponentType.StringSelect,
+          custom_id: customId,
+          options: field.options || [],
+          placeholder: field.placeholder,
+          min_values: field.minValues ?? (field.required !== false ? 1 : 0),
+          max_values: field.maxValues ?? 1,
+        },
+      });
+      continue;
+    }
+
+    const selectComponent = { custom_id: customId, placeholder: field.placeholder };
+    if (type === 'user_select') selectComponent.type = ComponentType.UserSelect;
+    else if (type === 'role_select') selectComponent.type = ComponentType.RoleSelect;
+    else if (type === 'channel_select') selectComponent.type = ComponentType.ChannelSelect;
+    else if (type === 'mentionable_select') selectComponent.type = ComponentType.MentionableSelect;
+
+    if (selectComponent.type) {
+      components.push({
+        type: ComponentType.Label,
+        label: field.label,
+        component: selectComponent,
+      });
+    }
   }
 
-  return modal;
+  return {
+    title: config.modalTitle || 'Inscrição no evento',
+    custom_id: `event:${slug}:modal`,
+    components,
+  };
 }
 
 function parseEventCustomId(customId) {
@@ -357,15 +417,46 @@ async function handleModalSubmit(interaction, slug) {
 
   const values = {};
   for (const field of config.fields) {
-    const inputId = `event:${slug}:field:${field.id}`;
-    values[field.id] = interaction.fields.getTextInputValue(inputId)?.trim() || '';
+    const type = fieldType(field);
+    if (type === 'text_display') continue;
+
+    const customId = `event:${slug}:field:${field.id}`;
+    try {
+      if (isTextFieldType(type)) {
+        values[field.id] = interaction.fields.getTextInputValue(customId)?.trim() || '';
+      } else if (type === 'string_select') {
+        const selected = interaction.fields.getStringSelectValues(customId);
+        values[field.id] = Array.isArray(selected) ? selected.join(', ') : '';
+      } else if (type === 'user_select') {
+        const users = interaction.fields.getSelectedUsers(customId);
+        values[field.id] = users ? [...users.values()].map(u => `${u.username} (${u.id})`).join(', ') : '';
+      } else if (type === 'role_select') {
+        const roles = interaction.fields.getSelectedRoles(customId);
+        values[field.id] = roles ? [...roles.values()].map(r => `${r.name} (${r.id})`).join(', ') : '';
+      } else if (type === 'channel_select') {
+        const channels = interaction.fields.getSelectedChannels(customId);
+        values[field.id] = channels ? [...channels.values()].map(c => `${c.name || c.id} (${c.id})`).join(', ') : '';
+      } else if (type === 'mentionable_select') {
+        const mentionables = interaction.fields.getSelectedMentionables(customId);
+        const parts = [];
+        if (mentionables?.users) parts.push(...[...mentionables.users.values()].map(u => `${u.username} (${u.id})`));
+        if (mentionables?.roles) parts.push(...[...mentionables.roles.values()].map(r => `${r.name} (${r.id})`));
+        values[field.id] = parts.join(', ');
+      }
+    } catch (e) {
+      logger.warn(`Failed to read modal field ${field.id} (${type}): ${e.message}`);
+      values[field.id] = '';
+    }
   }
 
   const displayName = interaction.member?.displayName || interaction.user.username;
   addOrUpdateSignup(slug, interaction.user.id, displayName, values);
 
   function formatConfirmation(config, values) {
-    const lines = config.fields.map(f => `${f.label}: ${values[f.id] || ''}`).join('\n');
+    const lines = config.fields
+      .filter(f => fieldType(f) !== 'text_display')
+      .map(f => `${f.label}: ${values[f.id] || ''}`)
+      .join('\n');
     return `# ✅ Inscrição confirmada!\n${lines}\n\n**Qualquer duvida chame um moderador!**`;
   }
 

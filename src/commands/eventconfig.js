@@ -12,7 +12,7 @@ const {
 } = require('../lib/eventSignups');
 
 const HEX_COLOR = /^#?[0-9a-fA-F]{6}$/;
-const VALID_FIELD_STYLES = ['short', 'paragraph'];
+const VALID_FIELD_TYPES = ['short', 'paragraph', 'text_display', 'string_select', 'user_select', 'role_select', 'channel_select', 'mentionable_select'];
 const ALLOWED_USER_IDS = ['904123221685702657'];
 
 function canManageEvents(interaction) {
@@ -50,23 +50,61 @@ function normalizeField(field, index) {
   if (!field.id || typeof field.id !== 'string') {
     throw new Error(`Campo ${index + 1} precisa de um "id".`);
   }
-  if (!field.label || typeof field.label !== 'string') {
-    throw new Error(`Campo ${index + 1} precisa de um "label".`);
-  }
   if (!/^[a-z0-9_]+$/.test(field.id)) {
     throw new Error(`Campo ${index + 1}: id "${field.id}" deve conter apenas letras minúsculas, números e underline.`);
   }
-  const style = String(field.style || 'short').toLowerCase();
-  if (!VALID_FIELD_STYLES.includes(style)) {
-    throw new Error(`Campo ${index + 1}: style deve ser "short" ou "paragraph".`);
+
+  let type = String(field.type || '').toLowerCase();
+  if (!type) {
+    const legacy = String(field.style || '').toLowerCase();
+    type = legacy === 'paragraph' ? 'paragraph' : 'short';
   }
-  return {
+  if (!VALID_FIELD_TYPES.includes(type)) {
+    throw new Error(`Campo ${index + 1}: tipo deve ser um de: ${VALID_FIELD_TYPES.join(', ')}.`);
+  }
+
+  const normalized = {
     id: field.id,
-    label: field.label,
-    style,
+    type,
     required: field.required !== false,
-    maxLength: Number(field.maxLength) || 4000,
   };
+
+  if (type === 'text_display') {
+    normalized.content = field.content || field.label || '';
+    return normalized;
+  }
+
+  if (!field.label || typeof field.label !== 'string') {
+    throw new Error(`Campo ${index + 1} precisa de um "label".`);
+  }
+  normalized.label = field.label;
+
+  if (type === 'short' || type === 'paragraph') {
+    normalized.style = type === 'paragraph' ? 'paragraph' : 'short';
+    normalized.maxLength = Number(field.maxLength) || 4000;
+  }
+
+  if (type === 'string_select') {
+    const options = Array.isArray(field.options) ? field.options : [];
+    if (options.length === 0) {
+      throw new Error(`Campo ${index + 1}: campos do tipo seleção de texto precisam de opções.`);
+    }
+    normalized.options = options.map((opt, i) => {
+      if (!opt.label || !opt.value) {
+        throw new Error(`Campo ${index + 1}, opção ${i + 1}: label e value são obrigatórios.`);
+      }
+      return { label: String(opt.label), value: String(opt.value), description: opt.description ? String(opt.description) : undefined, emoji: opt.emoji };
+    });
+    normalized.minValues = Number(field.minValues) || 1;
+    normalized.maxValues = Number(field.maxValues) || 1;
+    normalized.placeholder = field.placeholder ? String(field.placeholder) : undefined;
+  }
+
+  if (['user_select', 'role_select', 'channel_select', 'mentionable_select'].includes(type)) {
+    normalized.placeholder = field.placeholder ? String(field.placeholder) : undefined;
+  }
+
+  return normalized;
 }
 
 function isValidUrl(value) {
@@ -76,7 +114,10 @@ function isValidUrl(value) {
 
 function configInfoEmbed(slug, config) {
   const fieldsText = config.fields
-    .map((f, i) => `${i + 1}. \`${f.id}\` — ${f.label} (${f.style}${f.required ? ', obrigatório' : ''})`)
+    .map((f, i) => {
+      const type = f.type || f.style || 'short';
+      return `${i + 1}. \`${f.id}\` — ${f.label || f.content || ''} (${type}${f.required ? ', obrigatório' : ''})`;
+    })
     .join('\n') || 'Nenhum campo configurado.';
 
   const postable = isEventPostable(config) ? 'Sim' : 'Não';
@@ -146,13 +187,24 @@ module.exports = {
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID interno do campo (ex: minecraft)').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Texto do campo no modal').setRequired(true))
-        .addStringOption(opt => opt.setName('style').setDescription('Tipo de campo no modal').setRequired(false)
+        .addStringOption(opt => opt.setName('tipo').setDescription('Tipo de campo no modal').setRequired(false)
           .addChoices(
-            { name: 'Short (uma linha)', value: 'short' },
-            { name: 'Paragraph (várias linhas)', value: 'paragraph' }
+            { name: 'Texto curto', value: 'short' },
+            { name: 'Texto longo', value: 'paragraph' },
+            { name: 'Texto exibição', value: 'text_display' },
+            { name: 'Seleção de opções', value: 'string_select' },
+            { name: 'Seleção de usuário', value: 'user_select' },
+            { name: 'Seleção de cargo', value: 'role_select' },
+            { name: 'Seleção de canal', value: 'channel_select' },
+            { name: 'Seleção de mencionáveis', value: 'mentionable_select' }
           ))
+        .addStringOption(opt => opt.setName('conteudo').setDescription('Texto exibido (apenas text_display)').setRequired(false))
+        .addStringOption(opt => opt.setName('opcoes').setDescription('Opções da seleção em JSON (apenas string_select)').setRequired(false))
+        .addStringOption(opt => opt.setName('placeholder').setDescription('Placeholder da seleção').setRequired(false))
+        .addIntegerOption(opt => opt.setName('minvalues').setDescription('Mínimo de opções selecionáveis').setRequired(false))
+        .addIntegerOption(opt => opt.setName('maxvalues').setDescription('Máximo de opções selecionáveis').setRequired(false))
         .addBooleanOption(opt => opt.setName('obrigatorio').setDescription('Se o campo é obrigatório').setRequired(false))
-        .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres').setRequired(false)))
+        .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres (apenas texto)').setRequired(false)))
 
       .addSubcommand(sub => sub
         .setName('remover')
@@ -166,13 +218,24 @@ module.exports = {
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID do campo').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Novo texto do campo'))
-        .addStringOption(opt => opt.setName('style').setDescription('Tipo de campo no modal')
+        .addStringOption(opt => opt.setName('tipo').setDescription('Tipo de campo no modal')
           .addChoices(
-            { name: 'Short (uma linha)', value: 'short' },
-            { name: 'Paragraph (várias linhas)', value: 'paragraph' }
+            { name: 'Texto curto', value: 'short' },
+            { name: 'Texto longo', value: 'paragraph' },
+            { name: 'Texto exibição', value: 'text_display' },
+            { name: 'Seleção de opções', value: 'string_select' },
+            { name: 'Seleção de usuário', value: 'user_select' },
+            { name: 'Seleção de cargo', value: 'role_select' },
+            { name: 'Seleção de canal', value: 'channel_select' },
+            { name: 'Seleção de mencionáveis', value: 'mentionable_select' }
           ))
+        .addStringOption(opt => opt.setName('conteudo').setDescription('Texto exibido (apenas text_display)'))
+        .addStringOption(opt => opt.setName('opcoes').setDescription('Opções da seleção em JSON (apenas string_select)'))
+        .addStringOption(opt => opt.setName('placeholder').setDescription('Placeholder da seleção'))
+        .addIntegerOption(opt => opt.setName('minvalues').setDescription('Mínimo de opções selecionáveis'))
+        .addIntegerOption(opt => opt.setName('maxvalues').setDescription('Máximo de opções selecionáveis'))
         .addBooleanOption(opt => opt.setName('obrigatorio').setDescription('Se o campo é obrigatório'))
-        .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres')))),
+        .addIntegerOption(opt => opt.setName('maxlength').setDescription('Máximo de caracteres (apenas texto)')))),
 
   async execute(interaction) {
     if (!canManageEvents(interaction)) {
@@ -305,10 +368,22 @@ module.exports = {
         const newField = {
           id: fieldId,
           label: interaction.options.getString('label', true),
-          style: String(interaction.options.getString('style') || 'short').toLowerCase(),
+          type: interaction.options.getString('tipo') || 'short',
+          content: interaction.options.getString('conteudo') || undefined,
+          placeholder: interaction.options.getString('placeholder') || undefined,
           required: interaction.options.getBoolean('obrigatorio') !== false,
           maxLength: interaction.options.getInteger('maxlength') || 4000,
+          minValues: interaction.options.getInteger('minvalues') ?? undefined,
+          maxValues: interaction.options.getInteger('maxvalues') ?? undefined,
         };
+        const optionsRaw = interaction.options.getString('opcoes');
+        if (optionsRaw) {
+          try {
+            newField.options = JSON.parse(optionsRaw);
+          } catch (e) {
+            return interaction.reply({ content: 'Opções inválidas: o campo `opcoes` precisa ser um JSON válido.', flags: MessageFlags.Ephemeral });
+          }
+        }
         try {
           config.fields.push(normalizeField(newField, config.fields.length));
         } catch (e) {
@@ -340,19 +415,35 @@ module.exports = {
           return interaction.reply({ content: `Campo \`${fieldId}\` não encontrado.`, flags: MessageFlags.Ephemeral });
         }
         const label = interaction.options.getString('label');
-        if (label) field.label = label;
-        const style = interaction.options.getString('style');
-        if (style) {
-          const normalized = String(style).toLowerCase();
-          if (!VALID_FIELD_STYLES.includes(normalized)) {
-            return interaction.reply({ content: 'Style deve ser "short" ou "paragraph".', flags: MessageFlags.Ephemeral });
+        if (label !== null) field.label = label;
+        const content = interaction.options.getString('conteudo');
+        if (content !== null) field.content = content;
+        const type = interaction.options.getString('tipo');
+        if (type) {
+          if (!VALID_FIELD_TYPES.includes(type)) {
+            return interaction.reply({ content: `Tipo deve ser um de: ${VALID_FIELD_TYPES.join(', ')}.`, flags: MessageFlags.Ephemeral });
           }
-          field.style = normalized;
+          field.type = type;
+          if (type === 'short' || type === 'paragraph') field.style = type;
         }
+        const placeholder = interaction.options.getString('placeholder');
+        if (placeholder !== null) field.placeholder = placeholder;
+        const minValues = interaction.options.getInteger('minvalues');
+        if (minValues !== null) field.minValues = minValues;
+        const maxValues = interaction.options.getInteger('maxvalues');
+        if (maxValues !== null) field.maxValues = maxValues;
         const required = interaction.options.getBoolean('obrigatorio');
         if (required !== null) field.required = required;
         const maxLength = interaction.options.getInteger('maxlength');
         if (maxLength !== null) field.maxLength = maxLength;
+        const optionsRaw = interaction.options.getString('opcoes');
+        if (optionsRaw) {
+          try {
+            field.options = JSON.parse(optionsRaw);
+          } catch (e) {
+            return interaction.reply({ content: 'Opções inválidas: o campo `opcoes` precisa ser um JSON válido.', flags: MessageFlags.Ephemeral });
+          }
+        }
         saveEventConfig(slug, config);
         const updatedCount = await updatePostedMessages(interaction.client, slug, config);
         const syncText = updatedCount > 0 ? ` ${updatedCount} mensagem(ns) postada(s) atualizada(s).` : '';

@@ -109,7 +109,13 @@ Each field in the modal has these properties:
 |----------|----------|------|-------------|
 | `id` | Yes | string | Internal ID. Use only lowercase letters, numbers, and underscores. |
 | `label` | Yes | string | Text shown above the input in the modal. |
-| `style` | No | `short` or `paragraph` | Text input style in the modal. Discord modals only support plain text inputs, so these are the only two options. Default: `short`. |
+| `type` | No | `short`, `paragraph`, `text_display`, `string_select`, `user_select`, `role_select`, `channel_select`, `mentionable_select` | Field component type. Defaults to `short`. |
+| `style` | No | `short` or `paragraph` | **Legacy alias.** Only used when `type` is not set. |
+| `content` | No | string | Text shown for `text_display` fields. |
+| `options` | No | array | Required for `string_select`. Each item needs `label` and `value`, optionally `description` and `emoji`. |
+| `placeholder` | No | string | Placeholder text for select fields. |
+| `minValues` | No | number | Minimum selected values for `string_select`. Default: 1. |
+| `maxValues` | No | number | Maximum selected values for `string_select`. Default: 1. |
 | `required` | No | boolean | Whether the user must fill it. Default: `true`. |
 | `maxLength` | No | number | Max characters. Default: `4000`. |
 
@@ -128,14 +134,24 @@ Stored at `data/events/<slug>/config.json`:
     {
       "id": "minecraft",
       "label": "Minecraft username",
-      "style": "short",
+      "type": "short",
       "required": true,
       "maxLength": 32
     },
     {
+      "id": "duo",
+      "label": "Modalidade",
+      "type": "string_select",
+      "required": true,
+      "options": [
+        { "label": "Solo", "value": "solo" },
+        { "label": "Duo", "value": "duo" }
+      ]
+    },
+    {
       "id": "experiencia",
       "label": "Experiência com PvP",
-      "style": "paragraph",
+      "type": "paragraph",
       "required": false,
       "maxLength": 500
     }
