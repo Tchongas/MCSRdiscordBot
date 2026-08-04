@@ -96,8 +96,8 @@ function normalizeField(field, index) {
       }
       return { label: String(opt.label), value: String(opt.value), description: opt.description ? String(opt.description) : undefined, emoji: opt.emoji };
     });
-    normalized.minValues = Number(field.minValues) || 1;
-    normalized.maxValues = Number(field.maxValues) || 1;
+    normalized.minValues = field.minValues != null ? Number(field.minValues) : (normalized.required ? 1 : 0);
+    normalized.maxValues = field.maxValues != null ? Number(field.maxValues) : 1;
     normalized.placeholder = field.placeholder ? String(field.placeholder) : undefined;
   }
 
@@ -437,7 +437,15 @@ module.exports = {
         const maxValues = interaction.options.getInteger('maxvalues');
         if (maxValues !== null) field.maxValues = maxValues;
         const required = interaction.options.getBoolean('obrigatorio');
-        if (required !== null) field.required = required;
+        if (required !== null) {
+          field.required = required;
+          // Sync minValues for select types when required changes
+          if (field.type === 'string_select' || ['user_select', 'role_select', 'channel_select', 'mentionable_select'].includes(field.type)) {
+            if (minValues === null) { // only auto-set if user didn't explicitly set minValues
+              field.minValues = required ? 1 : 0;
+            }
+          }
+        }
         const maxLength = interaction.options.getInteger('maxlength');
         if (maxLength !== null) field.maxLength = maxLength;
         const optionsRaw = interaction.options.getString('opcoes');
