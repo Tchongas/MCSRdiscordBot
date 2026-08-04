@@ -392,7 +392,12 @@ async function handleSignupButton(interaction, slug) {
   }
   const existing = getSignup(slug, interaction.user.id);
   const modal = buildSignupModal(slug, config, existing);
-  await interaction.showModal(modal);
+  try {
+    await interaction.showModal(modal);
+  } catch (error) {
+    logger.error(`Failed to show modal for ${slug}: ${error.message}`, { modal, error });
+    await interaction.reply({ content: `Não foi possível abrir o modal: ${error.message}`, flags: MessageFlags.Ephemeral });
+  }
 }
 
 async function handleCancelButton(interaction, slug) {

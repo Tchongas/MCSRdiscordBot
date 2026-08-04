@@ -187,7 +187,7 @@ module.exports = {
         .addStringOption(opt => opt.setName('nome').setDescription('Nome do evento').setRequired(true).setAutocomplete(true))
         .addStringOption(opt => opt.setName('id').setDescription('ID interno do campo (ex: minecraft)').setRequired(true))
         .addStringOption(opt => opt.setName('label').setDescription('Texto do campo no modal').setRequired(true))
-        .addStringOption(opt => opt.setName('tipo').setDescription('Tipo de campo no modal').setRequired(false)
+        .addStringOption(opt => opt.setName('tipo').setDescription('Tipo de campo no modal').setRequired(true)
           .addChoices(
             { name: 'Texto curto', value: 'short' },
             { name: 'Texto longo', value: 'paragraph' },
