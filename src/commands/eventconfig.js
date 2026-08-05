@@ -78,6 +78,9 @@ function normalizeField(field, index) {
   if (!field.label || typeof field.label !== 'string') {
     throw new Error(`Campo ${index + 1} precisa de um "label".`);
   }
+  if (field.label.length > 45) {
+    throw new Error(`Campo ${index + 1}: o label "${field.label.slice(0, 20)}..." tem ${field.label.length} caracteres, mas o máximo é 45.`);
+  }
   normalized.label = field.label;
 
   if (type === 'short' || type === 'paragraph') {
@@ -368,9 +371,13 @@ module.exports = {
         }
         const tipoValue = interaction.options.getString('tipo', true);
         logger.info(`eventconfig campo adicionar: tipo raw = ${tipoValue}`);
+        const labelValue = interaction.options.getString('label', true);
+        if (labelValue.length > 45) {
+          return interaction.reply({ content: `O label tem ${labelValue.length} caracteres, mas o máximo permitido pelo Discord é **45**. Encurte o texto.`, flags: MessageFlags.Ephemeral });
+        }
         const newField = {
           id: fieldId,
-          label: interaction.options.getString('label', true),
+          label: labelValue,
           type: tipoValue,
           content: interaction.options.getString('conteudo') || undefined,
           placeholder: interaction.options.getString('placeholder') || undefined,
@@ -419,7 +426,12 @@ module.exports = {
           return interaction.reply({ content: `Campo \`${fieldId}\` não encontrado.`, flags: MessageFlags.Ephemeral });
         }
         const label = interaction.options.getString('label');
-        if (label !== null) field.label = label;
+        if (label !== null) {
+          if (label.length > 45) {
+            return interaction.reply({ content: `O label tem ${label.length} caracteres, mas o máximo permitido pelo Discord é **45**. Encurte o texto.`, flags: MessageFlags.Ephemeral });
+          }
+          field.label = label;
+        }
         const content = interaction.options.getString('conteudo');
         if (content !== null) field.content = content;
         const type = interaction.options.getString('tipo');
